@@ -22,7 +22,7 @@ pod 'MSSPlayer'
 
 ## Author
 
-masonchang1991, mason001@hancock.pro
+masonchang1991@gmail.com
 
 ## License
 

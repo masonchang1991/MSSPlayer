@@ -8,8 +8,8 @@
 
 Pod::Spec.new do |s|
   s.name             = 'MSSPlayer'
-  s.version          = '0.1.0'
-  s.summary          = 'A short description of MSSPlayer.'
+  s.version          = '0.2.0'
+  s.summary          = 'a native player with custom controlView'
 
 # This description is used to generate tags and improve search results.
 #   * Think: What does it do? Why did you write it? What is the focus?
@@ -24,17 +24,17 @@ TODO: Add long description of the pod here.
   s.homepage         = 'https://github.com/masonchang1991/MSSPlayer'
   # s.screenshots     = 'www.example.com/screenshots_1', 'www.example.com/screenshots_2'
   s.license          = { :type => 'MIT', :file => 'LICENSE' }
-  s.author           = { 'masonchang1991' => 'mason001@hancock.pro' }
+  s.author           = { 'masonchang1991' => 'masonchang1991@gmail.com' }
   s.source           = { :git => 'https://github.com/masonchang1991/MSSPlayer.git', :tag => s.version.to_s }
   # s.social_media_url = 'https://twitter.com/<TWITTER_USERNAME>'
 
-  s.ios.deployment_target = '8.0'
-
+  s.ios.deployment_target = '9.0'
+  s.swift_version = '4.2'
   s.source_files = 'MSSPlayer/Classes/**/*'
   
-  # s.resource_bundles = {
-  #   'MSSPlayer' => ['MSSPlayer/Assets/*.png']
-  # }
+  s.resource_bundles = {
+      'MSSPlayer' => ['MSSPlayer/Assets/*.png']
+  }
 
   # s.public_header_files = 'Pod/Classes/**/*.h'
   # s.frameworks = 'UIKit', 'MapKit'

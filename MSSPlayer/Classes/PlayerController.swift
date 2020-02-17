@@ -1,0 +1,925 @@
+//
+//  PlayerController.swift
+//  MPlayer
+//
+//  Created by Mason on 2020/1/8.
+//  Copyright © 2020 Mason. All rights reserved.
+//
+
+import Foundation
+import UIKit
+import AVFoundation
+
+@objc public protocol PlayerControllerListener: class {
+    func playStateDidChangeTo(playing: Bool)
+}
+
+public enum PlayerControllerError: Error {
+    case setResourceFail
+}
+
+public protocol PlayerControllerDelegate: NSObject {
+    func playerController(_ controller: PlayerController, isPlaying: Bool)
+    /// Call when tap fullscreen btn
+    func playerController(_ controller: PlayerController, isFullScreen: Bool)
+    /// Call when controlView show state changed
+    func playerController(_ controller: PlayerController, willAppear animated: Bool)
+    func playerController(_ controller: PlayerController, didAppear animated: Bool)
+    func playerController(_ controller: PlayerController, willDisappear animated: Bool)
+    func playerController(_ controller: PlayerController, didDisappear animated: Bool)
+    
+    func playerController(_ controller: PlayerController, shouldAllowOrientationChangeFullScreenState orientation: UIDeviceOrientation, isCurrentFullScreen: Bool) -> Bool
+    func playerController(_ controller: PlayerController, didChanged presentmode: PresentMode)
+}
+
+public protocol PlayerController: NSObject, PlayerGestureViewDelegate {
+    // MARK: - Presenter
+    var presenter: PlayerPresenter { get set }
+    
+    // MARK: - UI Components
+    var containerView: PlayerBackgroundView { get set }
+    /// contain playerLayer
+    var playerLayerView: PlayerLayerView { get set }
+    /// all gestures at this view
+    var gestureView: PlayerGestureView { get set }
+    /// controlView for landScape
+    var landScapeControlView: PlayerControlView { get set }
+    /// controlView for portrait
+    var portraitControlView: PlayerControlView { get set }
+    /// for loading
+    var loadingView: PlayerLoadingView { get set }
+    /// pause will show
+    var pauseView: PlayerPauseView { get set }
+    /// play to the end and there doesn't exist next video
+    var replayView: PlayerReplayView { get set }
+    /// play to the end and there exist next video
+    var playNextView: PlayerPlayNextView { get set }
+    /// defaultView for preparing
+    var startView: PlayerStartView { get set }
+
+    // MARK: - Parameters
+    var currentResourceIndex: Int { get set }
+    var currentResource: PlayerResource? { get set }
+    var resources: [PlayerResource] { get set }
+    var player: AVPlayer { get set }
+    var isPlaying: Bool { get set }
+    var delegate: PlayerControllerDelegate? { get set }
+    
+    // MARK: - Open method - Asset Settings
+    func setVideoBy(_ url: URL)
+    func setVideoBy(_ asset: AVURLAsset)
+    func setVideoBy(_ item: AVPlayerItem)
+    func setResources(_ resources: [PlayerResource])
+    func addResources(_ resources: [PlayerResource])
+    func insertResource(_ resource: PlayerResource, at index: Int) throws
+    func configPlayerBy(_ item: AVPlayerItem)
+    func configPlayerBy(_ resource: PlayerResource, at index: Int)
+    @discardableResult
+    func changeResourceBy(key: String) -> Bool
+    @discardableResult
+    func changeResourceBy(index: Int) -> Bool
+    
+    // MARK: - Open methods - Player method
+    func play()
+    func autoPlay()
+    func pause()
+    func seek(to seconds: TimeInterval, completion: ((Bool) -> Void)?)
+    
+    // MARK: - Open methods - Player View Setting
+    func changeControlView(_ controlView: PlayerControlView, isPortrait: Bool)
+    func getCurrentControlView() -> PlayerControlView
+    func setPlayerOn(view: UIView)
+    func setPlayerOn(view: UIView, with mode: PresentMode)
+    func changeToFullScreen(_ isFullScreen: Bool, animated: Bool)
+    
+    // MARK: - Listener
+    func addListener(_ listener: PlayerControllerListener)
+    func removeListener(_ listener: PlayerControllerListener)
+    
+    // MARK: - Static method
+    static func supportOrientations() -> UIInterfaceOrientationMask
+}
+
+public extension PlayerController {
+    static func supportOrientations() -> UIInterfaceOrientationMask {
+        return [.portrait, .portraitUpsideDown]
+    }
+    
+    func setVideoBy(_ url: URL) {
+        let asset = AVURLAsset(url: url)
+        setVideoBy(asset)
+    }
+
+    func setVideoBy(_ asset: AVURLAsset) {
+        let playerItem = AVPlayerItem(asset: asset)
+        setVideoBy(playerItem)
+    }
+
+    func setVideoBy(_ item: AVPlayerItem) {
+        let resource = MSSPlayerResource(item)
+        self.resources = [resource]
+    }
+}
+
+open class MSSPlayerController: NSObject, PlayerController, Loggable {
+    
+    // MARK: - UI Compoments
+    
+    open var containerView: PlayerBackgroundView = MSSPlayerBackgroundView()
+    open var playerLayerView: PlayerLayerView = MSSPlayerLayerView()
+    open var gestureView: PlayerGestureView = MSSPlayerGestureView()
+    open var landScapeControlView: PlayerControlView = MSSPlayerPortraitControlView()
+    open var portraitControlView: PlayerControlView = MSSPlayerPortraitControlView()
+    open var loadingView: PlayerLoadingView = MSSPlayerLoadingView()
+    open var pauseView: PlayerPauseView = MSSPlayerPauseView()
+    open var playNextView: PlayerPlayNextView = MSSPlayerPlayNextView()
+    open var replayView: PlayerReplayView = MSSPlayerReplayView()
+    open var startView: PlayerStartView = MSSPlayerStartView()
+    
+    // MARK: - Presenter - handle fullScreen transition
+    
+    open lazy var presenter: PlayerPresenter = {
+        let presenter = MSSPlayerPresenter()
+        presenter.delegate = self
+        return presenter
+    }()
+    
+    // MARK: - Parameters
+    
+    open var isAutoPlay: Bool = false
+    open var currentResourceIndex: Int = 0
+    open var currentResource: PlayerResource?
+    open var resources: [PlayerResource] = []
+    open var player: AVPlayer
+    open weak var delegate: PlayerControllerDelegate?
+    open var isPlaying: Bool = false {
+        didSet {
+            if oldValue != isPlaying {
+                delegate?.playerController(self, isPlaying: isPlaying)
+            }
+        }
+    }
+    
+    // Private Parameters
+    /// a computed property for player state
+    private var currentPlayState: Bool {
+        return player.rate != 0 && player.error == nil
+    }
+    private let listenerMap: NSHashTable<PlayerControllerListener> = NSHashTable<PlayerControllerListener>.weakObjects()
+    
+    // Gesture Parameters
+    fileprivate var gestureChangeValue: CGFloat = 0.0
+    
+    /// State Parameters
+    open var state: PlayerState = .empty
+    
+    /// Player Parameters
+    fileprivate var shouldSeekTo: TimeInterval = 0
+    fileprivate lazy var timer: Timer = {
+        let timer = Timer.scheduledTimer(timeInterval: 0.5,
+                                         target: self,
+                                         selector: #selector(updateStateAndVideoTime),
+                                         userInfo: nil,
+                                         repeats: true)
+        return timer
+    }()
+    
+    // MARK: - Open method - Asset Settings
+    
+    open func setResources(_ resources: [PlayerResource]) {
+        self.resources = resources
+        if let firstItem = resources.first {
+            configPlayerBy(firstItem, at: 0)
+        }
+    }
+    
+    open func addResources(_ resources: [PlayerResource]) {
+        let originResourceCount = self.resources.count
+        self.resources.append(contentsOf: resources)
+        if
+            originResourceCount == 0,
+            let firstItem = resources.first {
+            configPlayerBy(firstItem, at: 0)
+        }
+    }
+    
+    open func insertResource(_ resource: PlayerResource, at index: Int) throws {
+        // check index exist
+        if let _ = resources[exist: index] {
+            resources.insert(resource, at: index)
+        } else {
+            throw PlayerControllerError.setResourceFail
+        }
+    }
+    
+    open func configPlayerBy(_ item: AVPlayerItem) {
+        // MARK: - create a resource for this item
+        let newResource = MSSPlayerResource(item)
+        do {
+            try insertResource(newResource, at: currentResourceIndex)
+            configPlayerBy(newResource, at: currentResourceIndex)
+        } catch {
+            addResources([newResource])
+            if resources.count != 0 {
+                configPlayerBy(newResource, at: resources.count - 1)
+            }
+        }
+    }
+    
+    open func configPlayerBy(_ resource: PlayerResource, at index: Int) {
+        // Update state
+        changeState(to: .initial)
+        // Reset Player Layer
+        playerLayerView.playerLayer.player = nil
+        playerLayerView.playerLayer.player = player
+        // Reset ControlView
+        getCurrentControlView().resetControlView()
+        // change player item and add observer
+        let videoOutput = AVPlayerItemVideoOutput(pixelBufferAttributes: [kCVPixelBufferPixelFormatTypeKey as String: NSNumber(value: kCVPixelFormatType_32BGRA)])
+        resource.playerItem.add(videoOutput)
+        player.replaceCurrentItem(with: resource.playerItem)
+        addObserversTo(resource.playerItem)
+        // change resourece
+        if let currentResourceItem = currentResource?.playerItem {
+            removeObserversFrom(currentResourceItem)
+        }
+        currentResource = resource
+        currentResourceIndex = index
+        
+        play()
+    }
+    
+    @discardableResult
+    open func changeResourceBy(key: String) -> Bool {
+        // find resource by key
+        guard let (index, resource) = resources.enumerated().filter({ $0.element.resourceKey == key }).first else { return false }
+        configPlayerBy(resource, at: index)
+        return true
+    }
+    
+    @discardableResult
+    open func changeResourceBy(index: Int) -> Bool {
+        guard let resource = resources[exist: index] else { return false }
+        configPlayerBy(resource, at: index)
+        return true
+    }
+    
+    // MARK: - Open method - Player methods
+    
+    open func play() {
+        player.play()
+        changeState(to: .playing)
+        listenerMap.allObjects.forEach({ $0.playStateDidChangeTo(playing: true )})
+    }
+    
+    open func autoPlay() {
+        if isAutoPlay { play() }
+    }
+    
+    open func pause() {
+        player.pause()
+        changeState(to: .pause)
+        listenerMap.allObjects.forEach({ $0.playStateDidChangeTo(playing: false )})
+    }
+    
+    open func seek(to seconds: TimeInterval, completion: ((Bool) -> Void)?) {
+        if seconds.isNaN { completion?(false); return }
+        if player.currentItem?.status == .readyToPlay {
+            let targetTime = CMTimeMake(value: Int64(seconds), timescale: 1)
+            player.seek(to: targetTime, toleranceBefore: .zero, toleranceAfter: .zero) { (isFinished) in
+                completion?(isFinished)
+            }
+        } else {
+            shouldSeekTo = seconds
+            completion?(false)
+        }
+    }
+    
+    // MARK: - Open methods - Player View Setting
+    
+    open func changeControlView(_ controlView: PlayerControlView, isPortrait: Bool) {
+        if isPortrait {
+            portraitControlView = controlView
+            portraitControlView.delegate = self
+        } else {
+            landScapeControlView = controlView
+            landScapeControlView.delegate = self
+        }
+    }
+    
+    open func getCurrentControlView() -> PlayerControlView {
+        switch presenter.currentMode {
+        case .portrait, .portraitFullScreen: return portraitControlView
+        case .landScapeFullScreen: return landScapeControlView
+        }
+    }
+    
+    /// Set Player on view and default present mode is portrait
+    open func setPlayerOn(view: UIView) {
+        setPlayerOn(view: view, with: .portrait)
+    }
+    
+    open func setPlayerOn(view: UIView, with mode: PresentMode) {
+        switch mode {
+        case .portrait:
+            presenter.portraitContainerView = view
+            presenter.setMode(.portrait, playerView: containerView, animated: false)
+        case .landScapeFullScreen:
+            presenter.portraitContainerView = view
+            presenter.setMode(.portrait, playerView: containerView, animated: false)
+            presenter.isPortraitFullScreen = false
+            // 如果使用者在起始畫面就設定 player 的話，則有可能取不到 keyWindow，故添加延遲
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                self?.changeToFullScreen(true, animated: false)
+            }
+        case .portraitFullScreen:
+            presenter.portraitContainerView = view
+            presenter.setMode(.portrait, playerView: containerView, animated: false)
+            presenter.isPortraitFullScreen = true
+            // 如果使用者在起始畫面就設定 player 的話，則有可能取不到 keyWindow，故添加延遲
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                self?.changeToFullScreen(true, animated: false)
+            }
+        }
+    }
+    
+    open func changeToFullScreen(_ isFullScreen: Bool, animated: Bool = true) {
+        // 如果是 portraitFullScreen 的話，使用 portraitControlView
+        if isFullScreen {
+            if presenter.isPortraitFullScreen {
+                landScapeControlView.removeFromSuperview()
+                portraitControlView.removeFromSuperview()
+                gestureView.addSubview(portraitControlView)
+                portraitControlView.updateFullScrennState(isFullScreen: isFullScreen)
+                portraitControlView.frame = gestureView.bounds
+                portraitControlView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            } else {
+                portraitControlView.removeFromSuperview()
+                gestureView.addSubview(landScapeControlView)
+                landScapeControlView.updateFullScrennState(isFullScreen: isFullScreen)
+                landScapeControlView.frame = gestureView.bounds
+                landScapeControlView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            }
+        } else {
+            portraitControlView.removeFromSuperview()
+            landScapeControlView.removeFromSuperview()
+            gestureView.addSubview(portraitControlView)
+            portraitControlView.updateFullScrennState(isFullScreen: isFullScreen)
+            portraitControlView.frame = gestureView.bounds
+            portraitControlView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        }
+        presenter.changeToFullScreen(isFullScreen, playerView: containerView, animated: animated)
+    }
+    
+    // MARK: - Listener methods
+    
+    open func addListener(_ listener: PlayerControllerListener) {
+        listenerMap.add(listener)
+    }
+    
+    open func removeListener(_ listener: PlayerControllerListener) {
+        listenerMap.remove(listener)
+    }
+    
+    // MARK: - KVO and notification
+    
+    override open func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
+        guard let keyPath = keyPath else { return }
+        
+        // Handle PlayerItem Status
+        if
+            let playerItem = object as? AVPlayerItem {
+            switch keyPath {
+            case "status":
+                let newStatus: AVPlayerItem.Status
+                if let newStatusAsNumber = change?[NSKeyValueChangeKey.newKey] as? NSNumber {
+                    newStatus = AVPlayerItem.Status(rawValue: newStatusAsNumber.intValue)!
+                } else {
+                    newStatus = .unknown
+                }
+                switch newStatus {
+                case .readyToPlay:
+                    log(type: .debug, msg: "\(classForCoder.self) kvo state readyToPlay")
+                    changeState(to: .readyToPlay)
+                case .failed:
+                    log(type: .debug, msg: "\(classForCoder.self) kvo state fail")
+                    changeState(to: .error(playerItem.error))
+                case .unknown:
+                    log(type: .debug, msg: "\(classForCoder.self) kvo state unknown")
+                @unknown default:
+                    log(type: .debug, msg: "\(classForCoder.self) kvo state unknown case from new version")
+                }
+            case "loadedTimeRanges":
+                // 計算緩衝進度
+                if let timeInterval = availableDuration() {
+                    let duration = playerItem.duration
+                    let totalDuration = CMTimeGetSeconds(duration)
+                    // TODO: - loadedTime changed
+                    getCurrentControlView().updateLoadedTime(timeInterval, totalDuration: totalDuration)
+                }
+            case "playbackBufferEmpty":
+                // 緩衝為空的時候
+                if playerItem.isPlaybackBufferEmpty {
+                    changeState(to: .buffering)
+                }
+            case "playbackLikelyToKeepUp":
+                if playerItem.isPlaybackBufferEmpty && state == .readyToPlay {
+                    changeState(to: .bufferFinished)
+                }
+            case "rate":
+                updateStatus()
+            default: break
+            }
+        }
+    }
+    
+    @objc private func videoPlayDidEnd() {
+        changeState(to: .playedToTheEnd)
+    }
+    
+    @objc func failedToPlayToEndTime(_ notification: Notification) {
+        if let error = notification.userInfo!["AVPlayerItemFailedToPlayToEndTimeErrorKey"] as? Error {
+            changeState(to: .error(error))
+        }
+    }
+    
+    // MARK: - Private methods
+    // MARK: - State Machine
+    private func changeState(to: PlayerState) {
+        if state == to { return }
+        self.log(type: .debug, msg: "change player state to \(to)")
+        switch (state, to) {
+        case (_, .initial):
+            startView.show()
+            pauseView.hide()
+            loadingView.hide()
+            playNextView.hide()
+            replayView.hide()
+            getCurrentControlView().hideControlView(animated: false)
+            getCurrentControlView().hideErrorView()
+            state = to
+        case (_, .playing):
+            pauseView.hide()
+            loadingView.hide()
+            playNextView.hide()
+            replayView.hide()
+            getCurrentControlView().hideErrorView()
+            activeTimer()
+            state = to
+        case (_, .pause):
+            pauseView.show()
+            loadingView.hide()
+            getCurrentControlView().hideErrorView()
+            stopTimer()
+            state = to
+        case (_, .buffering):
+            pauseView.hide()
+            loadingView.show()
+            getCurrentControlView().hideErrorView()
+            state = to
+        case (_, .bufferFinished):
+            loadingView.hide()
+            getCurrentControlView().hideErrorView()
+            state = to
+        case (_, .readyToPlay):
+            loadingView.hide()
+            getCurrentControlView().hideErrorView()
+            if isAutoPlay {
+                startView.hide()
+                if shouldSeekTo > 0 {
+                    log(type: .debug, msg: "\(classForCoder.self) should seek to \(shouldSeekTo)")
+                    state = .buffering
+                    seek(to: shouldSeekTo) { [weak self](isCompleted) in
+                        guard let self = self else { return }
+                        if isCompleted {
+                            self.shouldSeekTo = 0
+                            self.state = .readyToPlay
+                        } else {
+                            self.log(type: .debug, msg: "seek fail")
+                        }
+                    }
+                } else {
+                    state = to
+                }
+            } else {
+                state = to
+            }
+            
+        case (_, .playedToTheEnd):
+            loadingView.hide()
+            getCurrentControlView().hideErrorView()
+            // Show play next view or replay view
+            if let _ = resources[exist: currentResourceIndex + 1] {
+                // show play next view
+                playNextView.show()
+            } else {
+                // show replay view
+                replayView.show()
+            }
+            timer.invalidate()
+            state = to
+        case (_, .error(let error)):
+            getCurrentControlView().showErrorViewWith(error!.localizedDescription)
+        default:
+            getCurrentControlView().hideErrorView()
+            state = to
+        }
+    }
+    
+    // MARK: - Timer
+    
+    fileprivate func activeTimer() {
+        if !timer.isValid {
+            timer = Timer.scheduledTimer(timeInterval: 0.5,
+                                         target: self,
+                                         selector: #selector(updateStateAndVideoTime),
+                                         userInfo: nil,
+                                         repeats: true)
+        }
+        timer.fireDate = Date()
+    }
+    
+    fileprivate func stopTimer() {
+        timer.invalidate()
+    }
+    
+    @objc fileprivate func updateStateAndVideoTime() {
+        guard let playerItem = player.currentItem else { return }
+        if playerItem.duration.timescale > 0 {
+            let currentTime = CMTimeGetSeconds(player.currentTime())
+            let totalTime = TimeInterval(playerItem.duration.value) / TimeInterval(playerItem.duration.timescale)
+            // Notify time change
+            getCurrentControlView().updateCurrentTime(currentTime, total: totalTime)
+        }
+    }
+    
+    // Update status methods
+    private func updateStatus(includeLoading: Bool = false) {
+        if includeLoading {
+            guard let playerItem = player.currentItem else { return }
+            if playerItem.isPlaybackLikelyToKeepUp || playerItem.isPlaybackBufferFull {
+                changeState(to: .bufferFinished)
+            } else if playerItem.status == .failed {
+                changeState(to: .error(playerItem.error))
+            } else {
+                changeState(to: .buffering)
+            }
+        }
+        
+        // value 0.0 pauses the video, while a value of 1.0 plays the current item at its natural rate.
+        if player.rate == 0.0 {
+            if let error = player.error {
+                changeState(to: .error(error)); return
+            }
+            guard let currentItem = player.currentItem else { changeState(to: .empty); return }
+            if player.currentTime() >= currentItem.duration {
+                videoPlayDidEnd()
+            }
+        }
+    }
+    
+    private func availableDuration() -> TimeInterval? {
+        if
+            let loadedTimeRanges = player.currentItem?.loadedTimeRanges,
+            let first = loadedTimeRanges.first {
+            let timeRange = first.timeRangeValue
+            let startSeconds = CMTimeGetSeconds(timeRange.start)
+            let durationSeconds = CMTimeGetSeconds(timeRange.duration)
+            let result = startSeconds + durationSeconds
+            return result
+        } else {
+            return nil
+        }
+    }
+    
+    // MARK: - View Settings
+    
+    fileprivate func setAllFunctionalViewsToContainerViews() {
+        containerView.addSubview(playerLayerView)
+        containerView.addSubview(gestureView)
+        gestureView.addSubview(portraitControlView)
+        containerView.addSubview(loadingView)
+        containerView.addSubview(pauseView)
+        containerView.addSubview(replayView)
+        containerView.addSubview(playNextView)
+        containerView.addSubview(startView)
+        
+        playerLayerView.frame = containerView.bounds
+        playerLayerView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        
+        gestureView.frame = containerView.bounds
+        gestureView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        gestureView.delegate = self
+        
+        landScapeControlView.delegate = self
+        addListener(landScapeControlView)
+        
+        portraitControlView.frame = containerView.bounds
+        portraitControlView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        portraitControlView.delegate = self
+        addListener(portraitControlView)
+        
+        loadingView.frame = containerView.bounds
+        loadingView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        
+        pauseView.frame = containerView.bounds
+        pauseView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        pauseView.delegate = self
+        addListener(pauseView)
+        
+        replayView.frame = containerView.bounds
+        replayView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        replayView.delegate = self
+        
+        playNextView.frame = containerView.bounds
+        playNextView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        playNextView.delegate = self
+    }
+    
+    // MARK: - Observers add and remove
+    
+    private func addObserversTo(_ item: AVPlayerItem) {
+        // NotificationCenter Observers
+        let notiCenter = NotificationCenter.default
+        notiCenter.addObserver(self,
+                               selector: #selector(videoPlayDidEnd),
+                               name: .AVPlayerItemDidPlayToEndTime,
+                               object: item)
+        notiCenter.addObserver(self,
+                               selector: #selector(failedToPlayToEndTime(_:)),
+                               name: .AVPlayerItemFailedToPlayToEndTime,
+                               object: item)
+        
+        // KVO Observers
+        // Player Status
+        player.addObserver(self, forKeyPath: #keyPath(AVPlayer.status), options: [.new, .initial], context: nil)
+        
+        // AVPlayerItemStatusUnknown, AVPlayerItemStatusReadyToPlay, AVPlayerItemStatusFailed
+        item.addObserver(self, forKeyPath: "status", options: [.new, .initial], context: nil)
+        // 當前影片的進度緩衝
+        item.addObserver(self, forKeyPath: "loadedTimeRanges", options: [.new, .initial], context: nil)
+        // 緩衝區空的，需等待數據
+        item.addObserver(self, forKeyPath: "playbackBufferEmpty", options: [.new, .initial], context: nil)
+        // 緩衝區有足夠的數據能播放
+        item.addObserver(self, forKeyPath: "playbackLikelyToKeepUp", options: [.new, .initial], context: nil)
+    }
+    
+    private func removeObserversFrom(_ item: AVPlayerItem) {
+        let notiCenter = NotificationCenter.default
+        notiCenter.removeObserver(self,
+                                  name: .AVPlayerItemDidPlayToEndTime,
+                                  object: item)
+        notiCenter.removeObserver(self,
+                                  name: .AVPlayerItemFailedToPlayToEndTime,
+                                  object: item)
+        
+        item.removeObserver(self, forKeyPath: "status")
+        item.removeObserver(self, forKeyPath: "loadedTimeRanges")
+        item.removeObserver(self, forKeyPath: "playbackBufferEmpty")
+        item.removeObserver(self, forKeyPath: "playbackLikelyToKeepUp")
+    }
+    
+    // MARK: - initialization and deallocation
+    
+    override public init() {
+        self.player = AVPlayer()
+        self.playerLayerView = MSSPlayerLayerView()
+        self.playerLayerView.playerLayer.player = self.player
+        super.init()
+        setAllFunctionalViewsToContainerViews()
+    }
+}
+
+// MARK: - PlayerGestureViewDelegate
+extension MSSPlayerController: PlayerGestureViewDelegate {
+    open func gestureView(_ gestureView: PlayerGestureView, singleTapWith numberOfTouch: Int) {
+        let controlView = getCurrentControlView()
+        controlView.isShowing ? controlView.hideControlView(animated: true): controlView.showControlView(animated: true)
+    }
+    
+    open func gestureView(_ gestureView: PlayerGestureView, doubleTapWith numberOfTouch: Int) {
+        switch state {
+        case .playing: pause()
+        default: play()
+        }
+    }
+    
+    open func gestureView(_ gestureView: PlayerGestureView, state: UIGestureRecognizer.State, velocityPoint: CGPoint) {
+        switch state {
+        case .began:
+            gestureChangeValue = 0.0
+            switch gestureView.panDirection {
+            case .vertical: break
+            case .horizontal: stopTimer()
+            }
+        case .changed:
+            switch gestureView.panDirection {
+            case .vertical:
+                gestureChangeValue += velocityPoint.y
+                if gestureView.panStartLocation.x < gestureView.bounds.size.width / 2 {
+                    // MARK: - change brightness
+                    let volumeController = PlayerSystemService.getVolumeController()
+                    volumeController.addVolume(Float(gestureChangeValue))
+                } else {
+                    // MARK: - change volume
+                    let brightnessController = PlayerSystemService.getBrightnessController()
+                    brightnessController.addBrightness(gestureChangeValue)
+                }
+            case .horizontal:
+                gestureChangeValue += velocityPoint.x
+                guard let playerItem = player.currentItem else { return }
+                // 防止出現NAN
+                guard playerItem.duration.timescale != 0 else { return }
+                let currentTime = TimeInterval(CMTimeGetSeconds(playerItem.currentTime()))
+                let totalTime = TimeInterval(CMTimeGetSeconds(playerItem.duration))
+                var seekRate = totalTime / 400
+                // Modify seekRate
+                if seekRate < 0.5 { seekRate = 0.5 }
+                shouldSeekTo = currentTime + TimeInterval(gestureChangeValue) / 100 * seekRate
+                // Modify shouldSeekTo value
+                if shouldSeekTo >= totalTime {
+                    shouldSeekTo = floor(totalTime)
+                } else if shouldSeekTo <= 0 {
+                    shouldSeekTo = 0
+                }
+                getCurrentControlView().showSeekTo(shouldSeekTo, total: totalTime, isAdd: shouldSeekTo > 0)
+            }
+        case .ended:
+            switch gestureView.panDirection {
+            case .vertical: break
+            case .horizontal:
+                getCurrentControlView().hideSeekView()
+                activeTimer()
+                switch self.state {
+                case .playedToTheEnd, .buffering, .bufferFinished, .readyToPlay, .playing:
+                    seek(to: shouldSeekTo) { [weak self](isFinished) in
+                        guard let self = self else { return }
+                        if isFinished {
+                            self.play()
+                        }
+                    }
+                case .pause:
+                    seek(to: shouldSeekTo) { [weak self](isFinished) in
+                        guard let self = self else { return }
+                        if isFinished {
+                            self.pause()
+                        }
+                    }
+                case .empty, .error(_), .initial: break
+                }
+            }
+        default: break
+        }
+    }
+}
+
+// MARK: - PlayerCoontrolViewDelegate
+extension MSSPlayerController: PlayerControlViewDelegate {
+    open func playerControlView(_ controlView: PlayerControlView, isPlaying: Bool) {
+        isPlaying ? play(): pause()
+    }
+    
+    open func playerControlView(_ controlView: PlayerControlView, isFullScreen: Bool) {
+        changeToFullScreen(isFullScreen)
+    }
+    
+    open func playerControlView(_ controlView: PlayerControlView, willAppear animated: Bool) {
+        delegate?.playerController(self, willAppear: animated)
+    }
+    
+    open func playerControlView(_ controlView: PlayerControlView, didAppear animated: Bool) {
+        delegate?.playerController(self, didAppear: animated)
+    }
+    
+    open func playerControlView(_ controlView: PlayerControlView, willDisappear animated: Bool) {
+        delegate?.playerController(self, willDisappear: animated)
+    }
+    
+    open func playerControlView(_ controlView: PlayerControlView, didDisappear animated: Bool) {
+        delegate?.playerController(self, didDisappear: animated)
+    }
+    
+    open func playerControlView(_ controlView: PlayerControlView, slider: UISlider, onSlider event: UIControl.Event) {
+        switch event {
+        case .touchDown:
+            guard let playerItem = player.currentItem else { return }
+            if playerItem.status == .readyToPlay {
+                timer.fireDate = Date.distantFuture
+            }
+        case .valueChanged:
+            guard let playerItem = player.currentItem else { return }
+            // 防止出現NAN
+            guard playerItem.duration.timescale != 0 else { return }
+            let totalTime = TimeInterval(CMTimeGetSeconds(playerItem.duration))
+            print("value change - slider value: \(slider.value)")
+            let target = totalTime * Double(slider.value)
+            getCurrentControlView().updateCurrentTime(target, total: totalTime)
+        case .touchUpInside:
+            // update controlView
+            getCurrentControlView().hideSeekView()
+            
+            guard let playerItem = player.currentItem else { return }
+            // 防止出現NAN
+            guard playerItem.duration.timescale != 0 else { return }
+            // 計算要移動的時間
+            let totalTime = TimeInterval(CMTimeGetSeconds(playerItem.duration))
+            let target = totalTime * Double(slider.value)
+            shouldSeekTo = floor(target)
+            // MARK: - 在這邊才恢復 timer，因為如果在前面恢復 timer 則 slider 的 value 會被更新導致計算會有問題
+            activeTimer()
+            
+            switch self.state {
+            case .playedToTheEnd, .buffering, .bufferFinished, .readyToPlay, .playing:
+                seek(to: shouldSeekTo) { [weak self](isFinished) in
+                    guard let self = self else { return }
+                    if isFinished {
+                        self.play()
+                    }
+                }
+            case .pause:
+                seek(to: shouldSeekTo) { [weak self](isFinished) in
+                    guard let self = self else { return }
+                    if isFinished {
+                        self.pause()
+                    }
+                }
+            case .empty, .error(_), .initial: break
+            }
+        default: break
+        }
+    }
+}
+
+// MARK: - PlayerPauseViewDelegate
+extension MSSPlayerController: PlayerPauseViewDelegate {
+    open func pauseView(_ pauseView: PlayerPauseView, isPlay: Bool) {
+        isPlay ? play(): pause()
+    }
+}
+
+// MARK: - PlayerPlayNextViewDelegate
+extension MSSPlayerController: PlayerPlayNextViewDelegate {
+    open func playNextView(_ playNextView: PlayerPlayNextView, didPlayNext playnext: Bool) {
+        if playnext {
+            changeResourceBy(index: currentResourceIndex + 1)
+        }
+    }
+    
+    open func playNextView(_ playNextView: PlayerPlayNextView, didCancel cancel: Bool) {
+        
+    }
+}
+
+// MARK: - PlayerReplayViewDelegate
+extension MSSPlayerController: PlayerReplayViewDelegate {
+    open func playerReplayView(_ replayView: PlayerReplayView, didReplay replay: Bool) {
+        if replay {
+            seek(to: 0, completion: nil)
+            play()
+        }
+    }
+    
+    open func playerReplayView(_ replayView: PlayerReplayView, didCancel cancel: Bool) {
+        
+    }
+}
+
+// MARK: - PlayerPresenterDelegate
+extension MSSPlayerController: PlayerPresenterDelegate {
+    open func playerPresenter(_ presenter: PlayerPresenter, orientationDidChanged orientation: UIDeviceOrientation) {
+       //Update UI
+        switch orientation {
+        case .landscapeLeft, .landscapeRight:
+            // 目前是否為全螢幕，若為 portrait 則代表目前不是全螢幕
+            let isCurrentFullScreen = presenter.currentMode != .portrait
+            // 先詢問是否能變更全螢幕狀態
+            let shouldAllowChangeFullScreenState = delegate?.playerController(self,
+                                                                              shouldAllowOrientationChangeFullScreenState: orientation,
+                                                                              isCurrentFullScreen: isCurrentFullScreen)
+            // 如果全螢幕是 portrait 則不需要旋轉的時候變更全螢幕狀態
+            if !presenter.isPortraitFullScreen {
+                if !isCurrentFullScreen && (shouldAllowChangeFullScreenState ?? true) {
+                    changeToFullScreen(true)
+                }
+            }
+        case .portrait:
+            // 目前是否為全螢幕，若為 portrait 則代表目前不是全螢幕
+            let isCurrentFullScreen = presenter.currentMode != .portrait
+            // 先詢問是否能變更全螢幕狀態
+            let shouldAllowChangeFullScreenState = delegate?.playerController(self,
+                                                                              shouldAllowOrientationChangeFullScreenState: orientation,
+                                                                              isCurrentFullScreen: isCurrentFullScreen)
+            // 如果全螢幕是 portrait 則不需要旋轉的時候變更全螢幕狀態
+            if !presenter.isPortraitFullScreen {
+                if isCurrentFullScreen && (shouldAllowChangeFullScreenState ?? true) {
+                    changeToFullScreen(false)
+                }
+            }
+        default: break
+        }
+    }
+    
+    open func playerPresenter(_ presenter: PlayerPresenter, modeDidChanged mode: PresentMode) {
+        delegate?.playerController(self, didChanged: mode)
+    }
+}

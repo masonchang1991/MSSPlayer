@@ -1,0 +1,22 @@
+{
+  "name": "MSSPlayer",
+  "version": "0.1.0",
+  "summary": "A short description of MSSPlayer.",
+  "description": "TODO: Add long description of the pod here.",
+  "homepage": "https://github.com/masonchang1991/MSSPlayer",
+  "license": {
+    "type": "MIT",
+    "file": "LICENSE"
+  },
+  "authors": {
+    "masonchang1991": "mason001@hancock.pro"
+  },
+  "source": {
+    "git": "https://github.com/masonchang1991/MSSPlayer.git",
+    "tag": "0.1.0"
+  },
+  "platforms": {
+    "ios": "8.0"
+  },
+  "source_files": "MSSPlayer/Classes/**/*"
+}
