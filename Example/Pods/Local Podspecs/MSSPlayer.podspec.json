@@ -1,7 +1,7 @@
 {
   "name": "MSSPlayer",
-  "version": "0.1.0",
-  "summary": "A short description of MSSPlayer.",
+  "version": "0.3.0",
+  "summary": "a native player with custom controlView.",
   "description": "TODO: Add long description of the pod here.",
   "homepage": "https://github.com/masonchang1991/MSSPlayer",
   "license": {
@@ -9,14 +9,21 @@
     "file": "LICENSE"
   },
   "authors": {
-    "masonchang1991": "mason001@hancock.pro"
+    "masonchang1991": "masonchang1991@gmail.com"
   },
   "source": {
     "git": "https://github.com/masonchang1991/MSSPlayer.git",
-    "tag": "0.1.0"
+    "tag": "0.3.0"
   },
   "platforms": {
-    "ios": "8.0"
+    "ios": "11.0"
   },
-  "source_files": "MSSPlayer/Classes/**/*"
+  "swift_versions": "5.0",
+  "source_files": "MSSPlayer/Classes/**/*",
+  "resource_bundles": {
+    "MSSPlayer": [
+      "MSSPlayer/Assets/*.png"
+    ]
+  },
+  "swift_version": "5.0"
 }

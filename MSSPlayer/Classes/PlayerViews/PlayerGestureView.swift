@@ -65,26 +65,41 @@ open class MSSPlayerGestureView: UIView, PlayerGestureView {
     open weak var delegate: PlayerGestureViewDelegate?
     
     open func disableGestures(_ gestures: PlayerGestureOptions) {
-        if gestures.contains(.panVertical) {
+        if gestures.contains(.all) {
             verticalPanIsDisable = true
-        }
-        if gestures.contains(.panHorizontal) {
             horizontalPanIsDisable = true
-        }
-        if gestures.contains(.singleTap) {
+            panGesture?.isEnabled = false
             singleTapGesture?.isEnabled = false
-        }
-        if gestures.contains(.doubleTap){
             doubleTapGesture?.isEnabled = false
+        } else {
+            if gestures.contains(.panVertical) {
+                verticalPanIsDisable = true
+            }
+            if gestures.contains(.panHorizontal) {
+                horizontalPanIsDisable = true
+            }
+            if gestures.contains(.panVertical) && gestures.contains(.panHorizontal) {
+                panGesture?.isEnabled = false
+            } else {
+                panGesture?.isEnabled = true
+            }
+            if gestures.contains(.singleTap) {
+                singleTapGesture?.isEnabled = false
+            }
+            if gestures.contains(.doubleTap){
+                doubleTapGesture?.isEnabled = false
+            }
         }
     }
     
     open func enableGestures(_ gestures: PlayerGestureOptions) {
         if gestures.contains(.panVertical) {
             verticalPanIsDisable = false
+            panGesture?.isEnabled = true
         }
         if gestures.contains(.panHorizontal) {
             horizontalPanIsDisable = false
+            panGesture?.isEnabled = true
         }
         if gestures.contains(.singleTap) {
             singleTapGesture?.isEnabled = true
