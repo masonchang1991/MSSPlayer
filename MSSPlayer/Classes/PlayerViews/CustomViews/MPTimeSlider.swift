@@ -19,7 +19,8 @@ public class MSSTimeSlider: UISlider {
     
     override open func thumbRect(forBounds bounds: CGRect, trackRect rect: CGRect, value: Float) -> CGRect {
         let rect = super.thumbRect(forBounds: bounds, trackRect: rect, value: value)
-        let newx = rect.origin.x - (bounds.width * 0.02)
+        let radius = (bounds.width * 0.02)
+        let newx = rect.origin.x - (radius > 3 ? 3: radius)
         let width = bounds.height / 2
         let height = bounds.height / 2
         let newRect = CGRect(x: newx, y: bounds.height / 4, width: width, height: height)

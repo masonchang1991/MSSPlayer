@@ -75,6 +75,8 @@ open class MSSPlayerLayerView: UIView, PlayerLayerView, Loggable {
         didSet {
             playerLayer.setNeedsLayout()
             playerLayer.setNeedsDisplay()
+            setNeedsLayout()
+            setNeedsDisplay()
             layoutIfNeeded()
         }
     }
@@ -84,6 +86,8 @@ open class MSSPlayerLayerView: UIView, PlayerLayerView, Loggable {
         didSet {
             playerLayer.setNeedsLayout()
             playerLayer.setNeedsDisplay()
+            setNeedsLayout()
+            setNeedsDisplay()
             layoutIfNeeded()
         }
     }

@@ -9,7 +9,7 @@
 import Foundation
 import UIKit
 
-enum MSSAsset: String {
+public enum MSSAsset: String {
     case mss_play
     case mss_pause
     case mss_sliderThumb
@@ -21,10 +21,9 @@ enum MSSAsset: String {
     case mss_brightness
 }
 
-
-class MSSImageResource {
+open class MSSImageResource {
     
-    static func get(_ asset: MSSAsset) -> UIImage? {
+    static public func get(_ asset: MSSAsset) -> UIImage? {
         let frameworkBundle = Bundle(for: MSSImageResource.self)
         let bundleURL = frameworkBundle.resourceURL?.appendingPathComponent("MSSPlayer.bundle")
         let resourceBundle = Bundle(url: bundleURL!)

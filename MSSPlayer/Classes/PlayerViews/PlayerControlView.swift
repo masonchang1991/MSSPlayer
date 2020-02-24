@@ -67,13 +67,13 @@ open class MSSPlayerPortraitControlView: UIView, PlayerControlView {
     open var timeSlider: UISlider = MSSTimeSlider()
     open var progressView: UIProgressView = UIProgressView()
     
-    fileprivate let mainMaskView: UIView = UIView()
-    fileprivate let topMaskView: UIView = UIView()
-    fileprivate let bottomMaskView: UIView = UIView()
-    fileprivate let seekToView = UIView()
-    fileprivate let seekToViewImage = UIImageView()
-    fileprivate let seekToLabel = UILabel()
-    fileprivate lazy var errorMsgLabel: UILabel = {
+    open var mainMaskView: UIView = UIView()
+    open var topMaskView: UIView = UIView()
+    open var bottomMaskView: UIView = UIView()
+    open var seekToView = UIView()
+    open var seekToViewImage = UIImageView()
+    open var seekToLabel = UILabel()
+    open lazy var errorMsgLabel: UILabel = {
         let label = UILabel()
         label.font = UIFont.systemFont(ofSize: 16)
         label.numberOfLines = 0
@@ -86,7 +86,7 @@ open class MSSPlayerPortraitControlView: UIView, PlayerControlView {
     open var isShowing: Bool = false
     open var topMaskBarHeight: CGFloat = 37
     open var bottomMaskBarHeight: CGFloat = 40.0
-    fileprivate var delayItem: DispatchWorkItem?
+    open var delayItem: DispatchWorkItem?
     
     // Notify
     open weak var delegate: PlayerControlViewDelegate?
@@ -168,7 +168,7 @@ open class MSSPlayerPortraitControlView: UIView, PlayerControlView {
     open func resetControlView() {
         timeSlider.value = 0.0
         timeProgressLabel.text = "00:00/00:00"
-        playBtn.isSelected = false
+        updatePlayState(isPlaying: false)
     }
     
     open func updateCurrentTime(_ current: TimeInterval, total: TimeInterval) {
@@ -195,25 +195,25 @@ open class MSSPlayerPortraitControlView: UIView, PlayerControlView {
     
     // MARK: - handle Slider Actions
     
-    @objc func progressSliderTouchBegan(_ sender: UISlider) {
+    @objc open func progressSliderTouchBegan(_ sender: UISlider) {
         delegate?.playerControlView(self, slider: sender, onSlider: .touchDown)
     }
     
-    @objc func progressSliderValueChanged(_ sender: UISlider) {
+    @objc open func progressSliderValueChanged(_ sender: UISlider) {
         delegate?.playerControlView(self, slider: sender, onSlider: .valueChanged)
     }
     
-    @objc func progressSliderTouchEnded(_ sender: UISlider) {
+    @objc open func progressSliderTouchEnded(_ sender: UISlider) {
         delegate?.playerControlView(self, slider: sender, onSlider: .touchUpInside)
     }
     
     // MARK: - handle button actions
-    @objc func fullScreenBtnPressed(_ sender: UIButton) {
+    @objc open func fullScreenBtnPressed(_ sender: UIButton) {
         sender.isSelected = !sender.isSelected
         delegate?.playerControlView(self, isFullScreen: sender.isSelected)
     }
     
-    @objc func playBtnPressed(_ sender: UIButton) {
+    @objc open func playBtnPressed(_ sender: UIButton) {
         sender.isSelected = !sender.isSelected
         delegate?.playerControlView(self, isPlaying: sender.isSelected)
     }
@@ -221,7 +221,7 @@ open class MSSPlayerPortraitControlView: UIView, PlayerControlView {
     /**
      auto fade out controlView with animation
      */
-    fileprivate func autoFadeOutControlViewWithAnimation() {
+    open func autoFadeOutControlViewWithAnimation() {
         cancelAutoFadeOutAnimation()
         delayItem = DispatchWorkItem { [weak self] in
             guard let self = self else { return }
@@ -236,7 +236,7 @@ open class MSSPlayerPortraitControlView: UIView, PlayerControlView {
     /**
      cancel auto fade out controlView with animation
      */
-    fileprivate func cancelAutoFadeOutAnimation() {
+    open func cancelAutoFadeOutAnimation() {
         guard let delayItem = delayItem else { return }
         delayItem.cancel()
     }

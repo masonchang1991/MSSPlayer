@@ -121,7 +121,9 @@ public extension PlayerController {
     }
 }
 
-open class MSSPlayerController: NSObject, PlayerController, Loggable {
+typealias PlayerViewDelegates = (PlayerControlViewDelegate & PlayerPauseViewDelegate & PlayerPlayNextViewDelegate & PlayerReplayViewDelegate)
+
+open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerViewDelegates, PlayerPresenterDelegate {
     
     // MARK: - UI Compoments
     
@@ -385,7 +387,6 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable {
     
     override open func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
         guard let keyPath = keyPath else { return }
-        
         // Handle PlayerItem Status
         if
             let playerItem = object as? AVPlayerItem {
@@ -426,10 +427,11 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable {
                 if playerItem.isPlaybackBufferEmpty && state == .readyToPlay {
                     changeState(to: .bufferFinished)
                 }
-            case "rate":
-                updateStatus()
             default: break
             }
+        }
+        if keyPath == "rate" {
+            updateStatus()
         }
     }
     
@@ -568,6 +570,7 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable {
         
         // value 0.0 pauses the video, while a value of 1.0 plays the current item at its natural rate.
         if player.rate == 0.0 {
+            isPlaying = false
             if let error = player.error {
                 changeState(to: .error(error)); return
             }
@@ -575,6 +578,8 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable {
             if player.currentTime() >= currentItem.duration {
                 videoPlayDidEnd()
             }
+        } else {
+            isPlaying = true
         }
     }
     
@@ -652,8 +657,7 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable {
         
         // KVO Observers
         // Player Status
-        player.addObserver(self, forKeyPath: #keyPath(AVPlayer.status), options: [.new, .initial], context: nil)
-        
+        player.addObserver(self, forKeyPath: "rate", options: [.initial, .new, .old], context: nil)
         // AVPlayerItemStatusUnknown, AVPlayerItemStatusReadyToPlay, AVPlayerItemStatusFailed
         item.addObserver(self, forKeyPath: "status", options: [.new, .initial], context: nil)
         // 當前影片的進度緩衝
@@ -672,7 +676,7 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable {
         notiCenter.removeObserver(self,
                                   name: .AVPlayerItemFailedToPlayToEndTime,
                                   object: item)
-        
+        player.removeObserver(self, forKeyPath: "rate")
         item.removeObserver(self, forKeyPath: "status")
         item.removeObserver(self, forKeyPath: "loadedTimeRanges")
         item.removeObserver(self, forKeyPath: "playbackBufferEmpty")
@@ -688,10 +692,7 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable {
         super.init()
         setAllFunctionalViewsToContainerViews()
     }
-}
-
-// MARK: - PlayerGestureViewDelegate
-extension MSSPlayerController: PlayerGestureViewDelegate {
+    // MARK: - PlayerGestureViewDelegat
     open func gestureView(_ gestureView: PlayerGestureView, singleTapWith numberOfTouch: Int) {
         let controlView = getCurrentControlView()
         controlView.isShowing ? controlView.hideControlView(animated: true): controlView.showControlView(animated: true)
@@ -771,10 +772,8 @@ extension MSSPlayerController: PlayerGestureViewDelegate {
         default: break
         }
     }
-}
 
-// MARK: - PlayerCoontrolViewDelegate
-extension MSSPlayerController: PlayerControlViewDelegate {
+    // MARK: - PlayerCoontrolViewDelegate
     open func playerControlView(_ controlView: PlayerControlView, isPlaying: Bool) {
         isPlaying ? play(): pause()
     }
@@ -848,17 +847,13 @@ extension MSSPlayerController: PlayerControlViewDelegate {
         default: break
         }
     }
-}
 
-// MARK: - PlayerPauseViewDelegate
-extension MSSPlayerController: PlayerPauseViewDelegate {
+    // MARK: - PlayerPauseViewDelegate
     open func pauseView(_ pauseView: PlayerPauseView, isPlay: Bool) {
         isPlay ? play(): pause()
     }
-}
 
-// MARK: - PlayerPlayNextViewDelegate
-extension MSSPlayerController: PlayerPlayNextViewDelegate {
+    // MARK: - PlayerPlayNextViewDelegate
     open func playNextView(_ playNextView: PlayerPlayNextView, didPlayNext playnext: Bool) {
         if playnext {
             changeResourceBy(index: currentResourceIndex + 1)
@@ -868,10 +863,8 @@ extension MSSPlayerController: PlayerPlayNextViewDelegate {
     open func playNextView(_ playNextView: PlayerPlayNextView, didCancel cancel: Bool) {
         
     }
-}
 
-// MARK: - PlayerReplayViewDelegate
-extension MSSPlayerController: PlayerReplayViewDelegate {
+    // MARK: - PlayerReplayViewDelegate
     open func playerReplayView(_ replayView: PlayerReplayView, didReplay replay: Bool) {
         if replay {
             seek(to: 0, completion: nil)
@@ -882,10 +875,8 @@ extension MSSPlayerController: PlayerReplayViewDelegate {
     open func playerReplayView(_ replayView: PlayerReplayView, didCancel cancel: Bool) {
         
     }
-}
 
-// MARK: - PlayerPresenterDelegate
-extension MSSPlayerController: PlayerPresenterDelegate {
+    // MARK: - PlayerPresenterDelegate
     open func playerPresenter(_ presenter: PlayerPresenter, orientationDidChanged orientation: UIDeviceOrientation) {
        //Update UI
         switch orientation {
