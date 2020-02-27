@@ -94,16 +94,20 @@ open class MSSPlayerPortraitControlView: UIView, PlayerControlView {
     // MARK: - Open methods - View Display
     
     open func showControlView(animated: Bool = true) {
-        delegate?.playerControlView(self, willAppear: animated)
         controlViewAnimation(isShow: true, animated: animated)
     }
     
     open func hideControlView(animated: Bool = true) {
-        delegate?.playerControlView(self, willDisappear: animated)
         controlViewAnimation(isShow: false, animated: animated)
     }
     
     open func controlViewAnimation(isShow: Bool, animated: Bool = true) {
+        if isShow {
+            delegate?.playerControlView(self, willAppear: animated)
+        } else {
+            delegate?.playerControlView(self, willDisappear: animated)
+        }
+        
         let otherAlpha: CGFloat = isShow ? 1.0 : 0.0
         let mainAlpha: CGFloat = isShow ? 0.3 : 0.0
         if animated {

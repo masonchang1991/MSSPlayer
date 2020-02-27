@@ -23,10 +23,10 @@ public protocol PlayerControllerDelegate: NSObject {
     /// Call when tap fullscreen btn
     func playerController(_ controller: PlayerController, isFullScreen: Bool)
     /// Call when controlView show state changed
-    func playerController(_ controller: PlayerController, willAppear animated: Bool)
-    func playerController(_ controller: PlayerController, didAppear animated: Bool)
-    func playerController(_ controller: PlayerController, willDisappear animated: Bool)
-    func playerController(_ controller: PlayerController, didDisappear animated: Bool)
+    func playerController(_ controller: PlayerController, controlView: PlayerControlView, willAppear animated: Bool)
+    func playerController(_ controller: PlayerController, controlView: PlayerControlView, didAppear animated: Bool)
+    func playerController(_ controller: PlayerController, controlView: PlayerControlView, willDisappear animated: Bool)
+    func playerController(_ controller: PlayerController, controlView: PlayerControlView, didDisappear animated: Bool)
     
     func playerController(_ controller: PlayerController, shouldAllowOrientationChangeFullScreenState orientation: UIDeviceOrientation, isCurrentFullScreen: Bool) -> Bool
     func playerController(_ controller: PlayerController, didChanged presentmode: PresentMode)
@@ -80,10 +80,11 @@ public protocol PlayerController: NSObject, PlayerGestureViewDelegate {
     func changeResourceBy(index: Int) -> Bool
     
     // MARK: - Open methods - Player method
-    func play()
-    func autoPlay()
+    func play(with rate: Float?)
+    func autoPlay(with rate: Float?)
     func pause()
     func seek(to seconds: TimeInterval, completion: ((Bool) -> Void)?)
+    func changeRate(_ rate: Float)
     
     // MARK: - Open methods - Player View Setting
     func changeControlView(_ controlView: PlayerControlView, isPortrait: Bool)
@@ -268,14 +269,20 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
     
     // MARK: - Open method - Player methods
     
-    open func play() {
-        player.play()
-        changeState(to: .playing)
-        listenerMap.allObjects.forEach({ $0.playStateDidChangeTo(playing: true )})
+    open func play(with rate: Float? = nil) {
+        if let rate = rate {
+            player.playImmediately(atRate: rate)
+            changeState(to: .playing)
+            listenerMap.allObjects.forEach({ $0.playStateDidChangeTo(playing: true )})
+        } else {
+            player.play()
+            changeState(to: .playing)
+            listenerMap.allObjects.forEach({ $0.playStateDidChangeTo(playing: true )})
+        }
     }
     
-    open func autoPlay() {
-        if isAutoPlay { play() }
+    open func autoPlay(with rate: Float? = nil) {
+        if isAutoPlay { play(with: rate) }
     }
     
     open func pause() {
@@ -297,13 +304,23 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
         }
     }
     
+    open func changeRate(_ rate: Float) {
+        player.rate = rate
+    }
+    
     // MARK: - Open methods - Player View Setting
     
     open func changeControlView(_ controlView: PlayerControlView, isPortrait: Bool) {
         if isPortrait {
+            removeListener(portraitControlView)
+            addListener(controlView)
+            
             portraitControlView = controlView
             portraitControlView.delegate = self
         } else {
+            removeListener(landScapeControlView)
+            addListener(controlView)
+            
             landScapeControlView = controlView
             landScapeControlView.delegate = self
         }
@@ -381,6 +398,35 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
     
     open func removeListener(_ listener: PlayerControllerListener) {
         listenerMap.remove(listener)
+    }
+    
+    // MARK: - Update Method for inherit
+    // Update status methods
+    open func updateStatus(includeLoading: Bool = false) {
+        if includeLoading {
+            guard let playerItem = player.currentItem else { return }
+            if playerItem.isPlaybackLikelyToKeepUp || playerItem.isPlaybackBufferFull {
+                changeState(to: .bufferFinished)
+            } else if playerItem.status == .failed {
+                changeState(to: .error(playerItem.error))
+            } else {
+                changeState(to: .buffering)
+            }
+        }
+        
+        // value 0.0 pauses the video, while a value of 1.0 plays the current item at its natural rate.
+        if player.rate == 0.0 {
+            isPlaying = false
+            if let error = player.error {
+                changeState(to: .error(error)); return
+            }
+            guard let currentItem = player.currentItem else { changeState(to: .empty); return }
+            if player.currentTime() >= currentItem.duration {
+                videoPlayDidEnd()
+            }
+        } else {
+            isPlaying = true
+        }
     }
     
     // MARK: - KVO and notification
@@ -476,8 +522,12 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
             state = to
         case (_, .buffering):
             pauseView.hide()
-            loadingView.show()
             getCurrentControlView().hideErrorView()
+            if player.currentItem?.isPlaybackLikelyToKeepUp ?? true {
+                loadingView.hide()
+            } else {
+                loadingView.show()
+            }
             state = to
         case (_, .bufferFinished):
             loadingView.hide()
@@ -552,34 +602,6 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
             let totalTime = TimeInterval(playerItem.duration.value) / TimeInterval(playerItem.duration.timescale)
             // Notify time change
             getCurrentControlView().updateCurrentTime(currentTime, total: totalTime)
-        }
-    }
-    
-    // Update status methods
-    private func updateStatus(includeLoading: Bool = false) {
-        if includeLoading {
-            guard let playerItem = player.currentItem else { return }
-            if playerItem.isPlaybackLikelyToKeepUp || playerItem.isPlaybackBufferFull {
-                changeState(to: .bufferFinished)
-            } else if playerItem.status == .failed {
-                changeState(to: .error(playerItem.error))
-            } else {
-                changeState(to: .buffering)
-            }
-        }
-        
-        // value 0.0 pauses the video, while a value of 1.0 plays the current item at its natural rate.
-        if player.rate == 0.0 {
-            isPlaying = false
-            if let error = player.error {
-                changeState(to: .error(error)); return
-            }
-            guard let currentItem = player.currentItem else { changeState(to: .empty); return }
-            if player.currentTime() >= currentItem.duration {
-                videoPlayDidEnd()
-            }
-        } else {
-            isPlaying = true
         }
     }
     
@@ -783,19 +805,19 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
     }
     
     open func playerControlView(_ controlView: PlayerControlView, willAppear animated: Bool) {
-        delegate?.playerController(self, willAppear: animated)
+        delegate?.playerController(self, controlView: controlView, willAppear: animated)
     }
     
     open func playerControlView(_ controlView: PlayerControlView, didAppear animated: Bool) {
-        delegate?.playerController(self, didAppear: animated)
+        delegate?.playerController(self, controlView: controlView, didAppear: animated)
     }
     
     open func playerControlView(_ controlView: PlayerControlView, willDisappear animated: Bool) {
-        delegate?.playerController(self, willDisappear: animated)
+        delegate?.playerController(self, controlView: controlView, willDisappear: animated)
     }
     
     open func playerControlView(_ controlView: PlayerControlView, didDisappear animated: Bool) {
-        delegate?.playerController(self, didDisappear: animated)
+        delegate?.playerController(self, controlView: controlView, didDisappear: animated)
     }
     
     open func playerControlView(_ controlView: PlayerControlView, slider: UISlider, onSlider event: UIControl.Event) {
