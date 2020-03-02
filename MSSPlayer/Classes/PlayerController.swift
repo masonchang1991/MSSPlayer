@@ -315,13 +315,24 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
             removeListener(portraitControlView)
             addListener(controlView)
             
+            portraitControlView.removeFromSuperview()
+            if presenter.currentMode != .landScapeFullScreen {
+                gestureView.addSubview(controlView)
+            }
             portraitControlView = controlView
+            portraitControlView.frame = containerView.bounds
+            portraitControlView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
             portraitControlView.delegate = self
         } else {
             removeListener(landScapeControlView)
             addListener(controlView)
             
+            if presenter.currentMode == .landScapeFullScreen {
+                gestureView.addSubview(controlView)
+            }
             landScapeControlView = controlView
+            landScapeControlView.frame = containerView.bounds
+            landScapeControlView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
             landScapeControlView.delegate = self
         }
     }
@@ -834,7 +845,7 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
             let totalTime = TimeInterval(CMTimeGetSeconds(playerItem.duration))
             print("value change - slider value: \(slider.value)")
             let target = totalTime * Double(slider.value)
-            getCurrentControlView().updateCurrentTime(target, total: totalTime)
+            getCurrentControlView().showSeekTo(target, total: totalTime, isAdd: target > 0)
         case .touchUpInside:
             // update controlView
             getCurrentControlView().hideSeekView()
