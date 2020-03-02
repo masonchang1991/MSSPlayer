@@ -186,6 +186,7 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
                                          repeats: true)
         return timer
     }()
+    fileprivate var isSliderSliding: Bool = false
     
     // MARK: - Open method - Asset Settings
     
@@ -834,10 +835,8 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
     open func playerControlView(_ controlView: PlayerControlView, slider: UISlider, onSlider event: UIControl.Event) {
         switch event {
         case .touchDown:
-            guard let playerItem = player.currentItem else { return }
-            if playerItem.status == .readyToPlay {
-                timer.fireDate = Date.distantFuture
-            }
+            isSliderSliding = true
+            stopTimer()
         case .valueChanged:
             guard let playerItem = player.currentItem else { return }
             // 防止出現NAN
@@ -859,6 +858,7 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
             shouldSeekTo = floor(target)
             // MARK: - 在這邊才恢復 timer，因為如果在前面恢復 timer 則 slider 的 value 會被更新導致計算會有問題
             activeTimer()
+            isSliderSliding = false
             
             switch self.state {
             case .playedToTheEnd, .buffering, .bufferFinished, .readyToPlay, .playing:
@@ -866,6 +866,11 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
                     guard let self = self else { return }
                     if isFinished {
                         self.play()
+                        if self.isSliderSliding {
+                            self.stopTimer()
+                        } else {
+                            self.activeTimer()
+                        }
                     }
                 }
             case .pause:
@@ -873,6 +878,11 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
                     guard let self = self else { return }
                     if isFinished {
                         self.pause()
+                        if self.isSliderSliding {
+                            self.stopTimer()
+                        } else {
+                            self.activeTimer()
+                        }
                     }
                 }
             case .empty, .error(_), .initial: break
