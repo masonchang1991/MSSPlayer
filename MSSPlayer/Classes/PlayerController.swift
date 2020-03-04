@@ -32,6 +32,19 @@ public protocol PlayerControllerDelegate: NSObject {
     func playerController(_ controller: PlayerController, didChanged presentmode: PresentMode)
 }
 
+public enum PlayerViewType {
+    case container(PlayerBackgroundView)
+    case playerLayer(PlayerLayerView)
+    case gesture(PlayerGestureView)
+    case landScapeControl(PlayerControlView)
+    case portraitControl(PlayerControlView)
+    case loading(PlayerLoadingView)
+    case pause(PlayerPauseView)
+    case replay(PlayerReplayView)
+    case playNext(PlayerPlayNextView)
+    case start(PlayerStartView)
+}
+
 public protocol PlayerController: NSObject, PlayerGestureViewDelegate {
     // MARK: - Presenter
     var presenter: PlayerPresenter { get set }
@@ -88,6 +101,7 @@ public protocol PlayerController: NSObject, PlayerGestureViewDelegate {
     
     // MARK: - Open methods - Player View Setting
     func changeControlView(_ controlView: PlayerControlView, isPortrait: Bool)
+    func changePlayerStateViewBy(_ playerStateView: PlayerViewType)
     func getCurrentControlView() -> PlayerControlView
     func setPlayerOn(view: UIView)
     func setPlayerOn(view: UIView, with mode: PresentMode)
@@ -313,28 +327,103 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
     
     open func changeControlView(_ controlView: PlayerControlView, isPortrait: Bool) {
         if isPortrait {
-            removeListener(portraitControlView)
-            addListener(controlView)
-            
-            portraitControlView.removeFromSuperview()
-            if presenter.currentMode != .landScapeFullScreen {
-                gestureView.addSubview(controlView)
-            }
-            portraitControlView = controlView
-            portraitControlView.frame = containerView.bounds
-            portraitControlView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-            portraitControlView.delegate = self
+            changePlayerStateViewBy(.portraitControl(controlView))
         } else {
-            removeListener(landScapeControlView)
-            addListener(controlView)
+            changePlayerStateViewBy(.landScapeControl(controlView))
+        }
+    }
+    
+    open func changePlayerStateViewBy(_ playerStateView: PlayerViewType) {
+        switch playerStateView {
+        case .container(let view):
+            let originFrame = containerView.frame
+            let originResizingMask = containerView.autoresizingMask
+            let originSuperView = containerView.superview
+            originSuperView?.addSubview(view)
+            view.frame = originFrame
+            view.autoresizingMask = originResizingMask
+            containerView.subviews.forEach({ (subView) in
+                view.addSubview(subView)
+            })
             
-            if presenter.currentMode == .landScapeFullScreen {
-                gestureView.addSubview(controlView)
-            }
-            landScapeControlView = controlView
-            landScapeControlView.frame = containerView.bounds
-            landScapeControlView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            containerView.removeFromSuperview()
+            containerView = view
+        case .playerLayer(let view):
+            containerView.insertSubview(view, belowSubview: gestureView)
+            view.frame = containerView.bounds
+            view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            playerLayerView.removeFromSuperview()
+            playerLayerView = view
+            playerLayerView.playerLayer.player = player
+        case .gesture(let view):
+            containerView.insertSubview(view, aboveSubview: playerLayerView)
+            view.frame = containerView.bounds
+            view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            gestureView.subviews.forEach({ (subView) in
+                view.addSubview(subView)
+            })
+            gestureView.removeFromSuperview()
+            gestureView = view
+            gestureView.delegate = self
+        case .portraitControl(let view):
+            let originFrame = portraitControlView.frame
+            let originResizingMask = portraitControlView.autoresizingMask
+            let originSuperView = portraitControlView.superview
+            originSuperView?.addSubview(view)
+            view.frame = originFrame
+            view.autoresizingMask = originResizingMask
+            removeListener(portraitControlView)
+            addListener(view)
+            portraitControlView.removeFromSuperview()
+            portraitControlView = view
+            portraitControlView.delegate = self
+        case .landScapeControl(let view):
+            let originFrame = landScapeControlView.frame
+            let originResizingMask = landScapeControlView.autoresizingMask
+            let originSuperView = landScapeControlView.superview
+            originSuperView?.addSubview(view)
+            view.frame = originFrame
+            view.autoresizingMask = originResizingMask
+            removeListener(landScapeControlView)
+            addListener(view)
+            landScapeControlView.removeFromSuperview()
+            landScapeControlView = view
             landScapeControlView.delegate = self
+        case .loading(let view):
+            containerView.insertSubview(view, aboveSubview: gestureView)
+            view.frame = containerView.bounds
+            view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            loadingView.removeFromSuperview()
+            loadingView = view
+        case .pause(let view):
+            containerView.insertSubview(view, aboveSubview: loadingView)
+            view.frame = containerView.bounds
+            view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            removeListener(pauseView)
+            addListener(view)
+            pauseView.removeFromSuperview()
+            pauseView = view
+            pauseView.delegate = self
+        case .replay(let view):
+            containerView.insertSubview(view, aboveSubview: pauseView)
+            view.frame = containerView.bounds
+            view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            replayView.removeFromSuperview()
+            replayView = view
+            replayView.delegate = self
+        case .playNext(let view):
+            containerView.insertSubview(view, aboveSubview: replayView)
+            view.frame = containerView.bounds
+            view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            playNextView.removeFromSuperview()
+            playNextView = view
+            playNextView.delegate = self
+        case .start(let view):
+            containerView.insertSubview(view, aboveSubview: playNextView)
+            view.frame = containerView.bounds
+            view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            startView.removeFromSuperview()
+            startView = view
         }
     }
     
@@ -519,6 +608,7 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
             getCurrentControlView().hideErrorView()
             state = to
         case (_, .playing):
+            startView.hide()
             pauseView.hide()
             loadingView.hide()
             playNextView.hide()
@@ -673,6 +763,9 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
         playNextView.frame = containerView.bounds
         playNextView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         playNextView.delegate = self
+        
+        startView.frame = containerView.bounds
+        startView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
     }
     
     // MARK: - Observers add and remove
