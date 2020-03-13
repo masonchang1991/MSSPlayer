@@ -17,6 +17,7 @@ public enum PresentMode {
 
 public protocol PlayerPresenterDelegate: class {
     func playerPresenter(_ presenter: PlayerPresenter, orientationDidChanged orientation: UIDeviceOrientation)
+    func playerPresenter(_ presenter: PlayerPresenter, modeWillChanged Mode: PresentMode)
     func playerPresenter(_ presenter: PlayerPresenter, modeDidChanged Mode: PresentMode)
 }
 
@@ -47,6 +48,11 @@ open class MSSPlayerPresenter: PlayerPresenter, Loggable {
     // MARK: - Parameters
     
     open private(set) var currentMode: PresentMode = .portrait {
+        willSet {
+            if newValue != currentMode {
+                delegate?.playerPresenter(self, modeWillChanged: currentMode)
+            }
+        }
         didSet {
             if oldValue != currentMode {
                 delegate?.playerPresenter(self, modeDidChanged: currentMode)

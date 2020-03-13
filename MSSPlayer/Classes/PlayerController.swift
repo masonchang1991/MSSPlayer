@@ -30,6 +30,7 @@ public protocol PlayerControllerDelegate: NSObject {
     
     func playerController(_ controller: PlayerController, shouldAllowOrientationChangeFullScreenState orientation: UIDeviceOrientation, isCurrentFullScreen: Bool) -> Bool
     func playerController(_ controller: PlayerController, didChanged presentmode: PresentMode)
+    func playerController(_ controller: PlayerController, willChanged presentmode: PresentMode)
 }
 
 public enum PlayerViewType {
@@ -1049,5 +1050,9 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
     
     open func playerPresenter(_ presenter: PlayerPresenter, modeDidChanged mode: PresentMode) {
         delegate?.playerController(self, didChanged: mode)
+    }
+    
+    open func playerPresenter(_ presenter: PlayerPresenter, modeWillChanged mode: PresentMode) {
+        delegate?.playerController(self, willChanged: mode)
     }
 }
