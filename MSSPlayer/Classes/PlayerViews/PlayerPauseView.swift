@@ -22,8 +22,8 @@ public protocol PlayerPauseView: UIView, PlayerControllerListener {
 open class MSSPlayerPauseView: UIView, PlayerPauseView {
     
     // MARK: - UI Components
-    fileprivate let mainMaskView: UIView = UIView()
-    fileprivate let playBtnImageView: UIImageView = UIImageView()
+    open var mainMaskView: UIView = UIView()
+    open var playBtnImageView: UIImageView = UIImageView()
     
     // MARK: - Parameters
     open weak var delegate: PlayerPauseViewDelegate?

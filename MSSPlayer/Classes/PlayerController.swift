@@ -249,13 +249,14 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
         changeState(to: .initial)
         // Reset Player Layer
         playerLayerView.playerLayer.player = nil
-        playerLayerView.playerLayer.player = player
         // Reset ControlView
         getCurrentControlView().resetControlView()
         // change player item and add observer
         let videoOutput = AVPlayerItemVideoOutput(pixelBufferAttributes: [kCVPixelBufferPixelFormatTypeKey as String: NSNumber(value: kCVPixelFormatType_32BGRA)])
         resource.playerItem.add(videoOutput)
         player.replaceCurrentItem(with: resource.playerItem)
+        // Reset Player Layer
+        playerLayerView.playerLayer.player = player
         addObserversTo(resource.playerItem)
         // change resourece
         if let currentResourceItem = currentResource?.playerItem {
