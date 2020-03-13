@@ -605,7 +605,7 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
             loadingView.hide()
             playNextView.hide()
             replayView.hide()
-            getCurrentControlView().hideControlView(animated: false)
+//            getCurrentControlView().hideControlView(animated: false)
             getCurrentControlView().hideErrorView()
             state = to
         case (_, .playing):
