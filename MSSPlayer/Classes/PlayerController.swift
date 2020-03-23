@@ -133,7 +133,7 @@ public extension PlayerController {
 
     func setVideoBy(_ item: AVPlayerItem) {
         let resource = MSSPlayerResource(item)
-        self.resources = [resource]
+        self.setResources([resource])
     }
 }
 
