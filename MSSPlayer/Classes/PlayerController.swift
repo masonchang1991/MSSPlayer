@@ -432,7 +432,7 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
     open func getCurrentControlView() -> PlayerControlView {
         switch presenter.currentMode {
         case .portrait, .portraitFullScreen: return portraitControlView
-        case .landScapeFullScreen: return landScapeControlView
+        case .landScapeRightFullScreen, .landScapeLeftFullScreen: return landScapeControlView
         }
     }
     
@@ -446,7 +446,7 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
         case .portrait:
             presenter.portraitContainerView = view
             presenter.setMode(.portrait, playerView: containerView, animated: false)
-        case .landScapeFullScreen:
+        case .landScapeRightFullScreen, .landScapeLeftFullScreen:
             presenter.portraitContainerView = view
             presenter.setMode(.portrait, playerView: containerView, animated: false)
             presenter.isPortraitFullScreen = false
@@ -1027,10 +1027,21 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
                                                                               isCurrentFullScreen: isCurrentFullScreen)
             // 如果全螢幕是 portrait 則不需要旋轉的時候變更全螢幕狀態
             if !presenter.isPortraitFullScreen {
-                if !isCurrentFullScreen && (shouldAllowChangeFullScreenState ?? true) {
-                    changeToFullScreen(true)
+                switch (presenter.currentMode, orientation) {
+                case (.landScapeRightFullScreen, .landscapeRight): break
+                case (.landScapeLeftFullScreen, .landscapeLeft): break
+                case (.landScapeRightFullScreen, .landscapeLeft), (.portrait, .landscapeLeft):
+                    if (shouldAllowChangeFullScreenState ?? true) {
+                        changeToFullScreen(true)
+                    }
+                case (.landScapeLeftFullScreen, .landscapeRight), (.portrait, .landscapeRight):
+                    if (shouldAllowChangeFullScreenState ?? true) {
+                        changeToFullScreen(true)
+                    }
+                default: break
                 }
             }
+
         case .portrait:
             // 目前是否為全螢幕，若為 portrait 則代表目前不是全螢幕
             let isCurrentFullScreen = presenter.currentMode != .portrait

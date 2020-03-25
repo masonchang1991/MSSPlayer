@@ -10,7 +10,8 @@ import Foundation
 import UIKit
 
 public enum PresentMode {
-    case landScapeFullScreen
+    case landScapeRightFullScreen
+    case landScapeLeftFullScreen
     case portraitFullScreen
     case portrait
 }
@@ -74,7 +75,7 @@ open class MSSPlayerPresenter: PlayerPresenter, Loggable {
     
     open func replaceContainerView(_ view: UIView?, mode: PresentMode) {
         switch mode {
-        case .landScapeFullScreen:
+        case .landScapeRightFullScreen, .landScapeLeftFullScreen:
             fullScreenContainerView = view
         case .portraitFullScreen:
             fullScreenContainerView = view
@@ -85,7 +86,17 @@ open class MSSPlayerPresenter: PlayerPresenter, Loggable {
     
     open func changeToFullScreen(_ isFullScreen: Bool, playerView: UIView, animated: Bool) {
         if isFullScreen {
-            changeMode(isPortraitFullScreen ? .portraitFullScreen: .landScapeFullScreen, playerView: playerView, animated: animated)
+            if isPortraitFullScreen {
+                changeMode(.portraitFullScreen, playerView: playerView, animated: animated)
+            } else {
+                switch deviceOrientation {
+                case .landscapeLeft:
+                    changeMode(.landScapeLeftFullScreen, playerView: playerView, animated: animated)
+                case .landscapeRight:
+                    changeMode(.landScapeRightFullScreen, playerView: playerView, animated: animated)
+                default: break
+                }
+            }
         } else {
             changeMode(.portrait, playerView: playerView, animated: animated)
         }
@@ -98,7 +109,7 @@ open class MSSPlayerPresenter: PlayerPresenter, Loggable {
     
     open func setMode(_ mode: PresentMode, playerView: UIView, animated: Bool) {
         switch mode {
-        case .landScapeFullScreen:
+        case .landScapeRightFullScreen, .landScapeLeftFullScreen:
             guard let fullScreenContainerView = fullScreenContainerView else { return }
             // 獲取 rotateView 相較於 fullScreenContainerView 的 frame
             // rotateView 在 addSubView 後會維持在同樣的位置
@@ -107,7 +118,8 @@ open class MSSPlayerPresenter: PlayerPresenter, Loggable {
                 UIView.animate(withDuration: 0.3, animations: { [weak fullScreenContainerView, weak playerView] in
                     guard let fullScreenContainerView = fullScreenContainerView else { return }
                     guard let playerView = playerView else { return }
-                    playerView.transform = self.getRotationTransformBy(.landscapeRight)
+                    let orientation: UIInterfaceOrientation = mode == .landScapeRightFullScreen ? .landscapeRight : .landscapeLeft
+                    playerView.transform = self.getRotationTransformBy(orientation)
                     UIView.animate(withDuration: 0.3) {
                         playerView.frame = fullScreenContainerView.frame
                         playerView.layoutIfNeeded()
@@ -120,7 +132,7 @@ open class MSSPlayerPresenter: PlayerPresenter, Loggable {
                     fullScreenContainerView.addSubview(playerView)
                     playerView.frame = fullScreenContainerView.bounds
                     playerView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-                    self.currentMode = .landScapeFullScreen
+                    self.currentMode = mode
                 }
             } else {
                 playerView.removeFromSuperview()
@@ -128,7 +140,7 @@ open class MSSPlayerPresenter: PlayerPresenter, Loggable {
                 playerView.frame = fullScreenContainerView.bounds
                 playerView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
                 playerView.layoutIfNeeded()
-                self.currentMode = .landScapeFullScreen
+                self.currentMode = mode
             }
         case .portraitFullScreen:
             guard let fullScreenContainerView = fullScreenContainerView else { return }
@@ -170,7 +182,7 @@ open class MSSPlayerPresenter: PlayerPresenter, Loggable {
                 // rotateView 在 addSubView 後會維持在同樣的位置
                 let frame: CGRect
                 switch currentMode {
-                case .landScapeFullScreen, .portraitFullScreen:
+                case .landScapeRightFullScreen, .landScapeLeftFullScreen, .portraitFullScreen:
                     frame = portraitContainerView.convert(portraitContainerView.bounds,
                                                           to: fullScreenContainerView)
                 case .portrait:
@@ -232,8 +244,8 @@ open class MSSPlayerPresenter: PlayerPresenter, Loggable {
     private func getRotationTransformBy(_ orientation: UIInterfaceOrientation) -> CGAffineTransform {
         switch orientation {
         case .portrait: return .identity
-        case .landscapeLeft: return CGAffineTransform(rotationAngle: -CGFloat.pi / 2)
-        case .landscapeRight: return CGAffineTransform(rotationAngle: CGFloat.pi / 2)
+        case .landscapeLeft: return CGAffineTransform(rotationAngle: CGFloat.pi / 2)
+        case .landscapeRight: return CGAffineTransform(rotationAngle: -CGFloat.pi / 2)
         case .portraitUpsideDown: return CGAffineTransform(rotationAngle: CGFloat.pi / 2)
         default: return .identity
         }

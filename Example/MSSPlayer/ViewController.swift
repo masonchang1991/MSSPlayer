@@ -17,7 +17,7 @@ class ViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        playerController.setPlayerOn(view: containerView, with: .landScapeFullScreen)
+        playerController.setPlayerOn(view: containerView, with: .landScapeRightFullScreen)
         
         let resourse1 = MSSPlayerResource(URL(string: "https://bitdash-a.akamaihd.net/content/sintel/hls/playlist.m3u8")!)
         let resourse2 = MSSPlayerResource(URL(string: "http://184.72.239.149/vod/smil:BigBuckBunny.smil/playlist.m3u8")!)
