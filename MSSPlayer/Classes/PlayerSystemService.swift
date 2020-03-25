@@ -14,12 +14,10 @@ public struct PlayerSystemService {
     static public var volumeController: VolumeController = MSSPlayerVolumeController()
     
     static public func getBrightnessController() -> BrightnessController {
-        brightNessController.dissappear()
         return brightNessController
     }
     
     static public func getVolumeController() -> VolumeController {
-        volumeController.dissappear()
         return volumeController
     }
 }

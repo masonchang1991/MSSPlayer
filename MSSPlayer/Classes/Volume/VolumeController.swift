@@ -24,41 +24,73 @@ public protocol VolumeController {
     // Open methods
     func addVolume(_ value: Float)
     func updateVolume(_ level: Float)
+    func setOnView(_ view: UIView)
+    func changeToFullScreenMode(_ isFullScreen: Bool)
 }
 
 open class MSSPlayerVolumeController: VolumeController {
     
     // UI
     open var volumeView: VolumeView = SystemVolumeView()
+    open lazy var landscapeVolumeView: VolumeView = {
+        let frame = CGRect(origin: .zero, size: CGSize(width: 300, height: 50))
+        return NormalVolume(frame: frame)
+    }()
     // Parameters
-    open var isEnable: Bool = false
+    open var isEnable: Bool = true
     open var timer: Timer?
+    open var isFullScreen: Bool = false
     
     // MARK: - UI Display methods
     /// show volumeView with animation
     open func show() {
-        if isEnable {
-            resetTimer()
+        resetTimer()
+        if isFullScreen {
+            landscapeVolumeView.show(animated: true)
+        } else {
             volumeView.show(animated: true)
         }
     }
     /// dissappear volumeView with animation
     open func dissappear() {
-        if isEnable {
-            volumeView.disappear(animated: true)
-            removeTimer()
-        }
+        landscapeVolumeView.disappear(animated: true)
+        volumeView.disappear(animated: true)
+        removeTimer()
     }
     
     // MARK: - Open methods
     
     open func addVolume(_ value: Float) {
-        updateVolume(volumeView.getCurrentVolumeLevel() + value)
+        if isFullScreen {
+            updateVolume(landscapeVolumeView.getCurrentVolumeLevel() + value)
+        } else {
+            updateVolume(volumeView.getCurrentVolumeLevel() + value)
+        }
     }
     
     open func updateVolume(_ level: Float) {
-        show()
-        volumeView.updateVolumeLevelWith(level)
+        if isEnable {
+            show()
+            if isFullScreen {
+                landscapeVolumeView.updateVolumeLevelWith(level)
+            } else {
+                volumeView.updateVolumeLevelWith(level)
+            }
+        }
+    }
+    
+    open func setOnView(_ view: UIView) {
+        if isFullScreen {
+            landscapeVolumeView.removeMPVolumeViewFromSuperView()
+            landscapeVolumeView.setOnView(view)
+        }
+    }
+    
+    open func changeToFullScreenMode(_ isFullScreen: Bool) {
+        self.isFullScreen = isFullScreen
+        if !isFullScreen {
+            landscapeVolumeView.removeMPVolumeViewFromSuperView()
+        }
     }
     
     // MARK: - Private methods

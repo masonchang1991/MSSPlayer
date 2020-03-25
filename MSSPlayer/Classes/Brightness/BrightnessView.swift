@@ -70,6 +70,9 @@ open class MSSPlayerBrightnessView: UIView, BrightnessView {
                 self.isShowing = true
             }
         })
+        if let item = presentItem {
+            DispatchQueue.main.async(execute: item)
+        }
     }
     
     open func disappear(animated: Bool) {
@@ -91,6 +94,9 @@ open class MSSPlayerBrightnessView: UIView, BrightnessView {
                 self.isShowing = false
             }
         })
+        if let item = presentItem {
+            DispatchQueue.main.async(execute: item)
+        }
     }
     
     // MARK: - Open methods
@@ -112,6 +118,7 @@ open class MSSPlayerBrightnessView: UIView, BrightnessView {
                 }
             }
         }
+        UIScreen.main.brightness = brightnessLevel
     }
     
     // MARK: - Private methods
@@ -129,6 +136,15 @@ open class MSSPlayerBrightnessView: UIView, BrightnessView {
         guard let keyWindow = keyWindow else { return }
         self.center = keyWindow.center
         
+        // update tips frame
+        let tipW = (brightnessLevelView.bounds.size.width - 17) / 16
+        let tipH: CGFloat = 5
+        let tipY: CGFloat = 1
+        
+        for (index, tipImageView) in tipArray.enumerated() {
+            let tipX = CGFloat(index) * (tipW + 1) + 1
+            (tipImageView as? UIView)?.frame = CGRect(x: tipX, y: tipY, width: tipW, height: tipH)
+        }
     }
     
     private func setupUI() {
@@ -146,7 +162,6 @@ open class MSSPlayerBrightnessView: UIView, BrightnessView {
         addSubview(titleLabel)
         addSubview(brightnessLevelView)
         
-        titleLabel = UILabel()
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             titleLabel.topAnchor.constraint(equalTo: topAnchor, constant: 5),
@@ -162,7 +177,6 @@ open class MSSPlayerBrightnessView: UIView, BrightnessView {
         titleLabel.textAlignment = .center
         titleLabel.text = "Brightness"
         
-        bgImageView = UIImageView()
         bgImageView.image = MSSImageResource.get(.mss_brightness)
         bgImageView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
@@ -172,7 +186,6 @@ open class MSSPlayerBrightnessView: UIView, BrightnessView {
             bgImageView.bottomAnchor.constraint(equalTo: brightnessLevelView.topAnchor, constant: -5)
         ])
         
-        brightnessLevelView = UIView()
         brightnessLevelView.backgroundColor = UIColor(red: 0.22, green: 0.22, blue: 0.21, alpha: 1.0)
         brightnessLevelView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([

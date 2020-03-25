@@ -20,28 +20,25 @@ public protocol BrightnessController {
     // Open methods
     func addBrightness(_ level: CGFloat)
     func updateBrightness(_ level: CGFloat)
+    func changeOrientation(_ orientation: UIDeviceOrientation)
 }
 
 open class MSSPlayerBrightnessController: BrightnessController {
     
-    open var isEnable: Bool = false
+    open var isEnable: Bool = true
     open var brightnessView: BrightnessView = MSSPlayerBrightnessView()
     open var timer: Timer?
     
     // MARK: - UI Display methods
     
     open func show() {
-        if isEnable {
-            resetTimer()
-            brightnessView.show(animated: true)
-        }
+        resetTimer()
+        brightnessView.show(animated: true)
     }
     
     open func dissappear() {
-        if isEnable {
-            brightnessView.disappear(animated: true)
-            removeTimer()
-        }
+        brightnessView.disappear(animated: true)
+        removeTimer()
     }
     
     // MARK: - Open methods
@@ -51,15 +48,31 @@ open class MSSPlayerBrightnessController: BrightnessController {
     }
     
     open func updateBrightness(_ level: CGFloat) {
-        show()
-        brightnessView.updateBrightnessLevelWith(level)
+        if isEnable {
+            show()
+            brightnessView.updateBrightnessLevelWith(level)
+        }
     }
      
     @objc private func disappearBrightnessView() {
         dissappear()
     }
     
+    open func changeOrientation(_ orientation: UIDeviceOrientation) {
+        brightnessView.transform = getRotationTransformBy(orientation)
+    }
+    
     // MARK: - Private methods
+    
+    private func getRotationTransformBy(_ orientation: UIDeviceOrientation) -> CGAffineTransform {
+        switch orientation {
+        case .portrait: return .identity
+        case .landscapeLeft: return CGAffineTransform(rotationAngle: CGFloat.pi / 2)
+        case .landscapeRight: return CGAffineTransform(rotationAngle: -CGFloat.pi / 2)
+        case .portraitUpsideDown: return CGAffineTransform(rotationAngle: CGFloat.pi / 2)
+        default: return .identity
+        }
+    }
     
     private func addObservers() {
         let notiCenter = NotificationCenter.default

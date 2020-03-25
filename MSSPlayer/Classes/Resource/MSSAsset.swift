@@ -19,6 +19,8 @@ public enum MSSAsset: String {
     case mss_playNext
     case mss_replay
     case mss_brightness
+    case mss_volume_on
+    case mss_volume_off
 }
 
 open class MSSImageResource {
