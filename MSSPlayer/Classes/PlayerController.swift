@@ -860,7 +860,7 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
                     // MARK: - change brightness
                     let brightnessController = PlayerSystemService.getBrightnessController()
                     brightnessController.changeOrientation(UIDevice.current.orientation)
-                    let adjustValue: CGFloat = 0.1
+                    let adjustValue: CGFloat = 0.01
                     if velocityPoint.y > 0 {
                         brightnessController.addBrightness(-adjustValue)
                     } else if velocityPoint.y < 0 {
