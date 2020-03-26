@@ -28,6 +28,7 @@ public protocol PlayerPresenter {
     var portraitContainerView: UIView? { get set }
     
     // MARK: - Parameters
+    var changeModeLocked: Bool { get }
     var currentMode: PresentMode { get }
     var isPortraitFullScreen: Bool { get set }
     var delegate: PlayerPresenterDelegate? { get set }
@@ -37,6 +38,8 @@ public protocol PlayerPresenter {
     func changeToFullScreen(_ isFullScreen: Bool, playerView: UIView, animated: Bool)
     func changeMode(_ mode: PresentMode, playerView: UIView, animated: Bool)
     func setMode(_ mode: PresentMode, playerView: UIView, animated: Bool)
+    func lockCurrentMode()
+    func unlockCurrentMode()
 }
 
 open class MSSPlayerPresenter: PlayerPresenter, Loggable {
@@ -47,7 +50,7 @@ open class MSSPlayerPresenter: PlayerPresenter, Loggable {
     open var portraitContainerView: UIView?
     
     // MARK: - Parameters
-    
+    open var changeModeLocked: Bool = false
     open private(set) var currentMode: PresentMode = .portrait {
         willSet {
             if newValue != currentMode {
@@ -72,6 +75,14 @@ open class MSSPlayerPresenter: PlayerPresenter, Loggable {
     }
     
     // MARK: - Open method
+    
+    open func lockCurrentMode() {
+        changeModeLocked = true
+    }
+    
+    open func unlockCurrentMode() {
+        changeModeLocked = false
+    }
     
     open func replaceContainerView(_ view: UIView?, mode: PresentMode) {
         switch mode {
@@ -103,7 +114,7 @@ open class MSSPlayerPresenter: PlayerPresenter, Loggable {
     }
     
     open func changeMode(_ mode: PresentMode, playerView: UIView, animated: Bool) {
-        if mode == currentMode { return }
+        if mode == currentMode || changeModeLocked { return }
         setMode(mode, playerView: playerView, animated: animated)
     }
     
