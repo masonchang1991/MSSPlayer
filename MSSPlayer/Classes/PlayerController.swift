@@ -951,7 +951,6 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
             // 防止出現NAN
             guard playerItem.duration.timescale != 0 else { return }
             let totalTime = TimeInterval(CMTimeGetSeconds(playerItem.duration))
-            print("value change - slider value: \(slider.value)")
             let target = totalTime * Double(slider.value)
             getCurrentControlView().showSeekTo(target, total: totalTime, isAdd: target > 0)
         case .touchUpInside:

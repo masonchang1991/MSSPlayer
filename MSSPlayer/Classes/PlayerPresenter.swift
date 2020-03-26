@@ -51,7 +51,7 @@ open class MSSPlayerPresenter: PlayerPresenter, Loggable {
     open private(set) var currentMode: PresentMode = .portrait {
         willSet {
             if newValue != currentMode {
-                delegate?.playerPresenter(self, modeWillChanged: currentMode)
+                delegate?.playerPresenter(self, modeWillChanged: newValue)
             }
         }
         didSet {
