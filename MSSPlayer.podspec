@@ -8,7 +8,7 @@
 
 Pod::Spec.new do |s|
   s.name             = 'MSSPlayer'
-  s.version          = '0.9.1'
+  s.version          = '0.9.3'
   s.summary          = 'a native player with custom controlView.'
 
 # This description is used to generate tags and improve search results.
