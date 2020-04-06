@@ -49,6 +49,7 @@ public protocol PlayerControlView: UIView, PlayerControllerListener {
     func hideErrorView()
     func showSeekTo(_ seconds: TimeInterval, total duration: TimeInterval, isAdd: Bool)
     func hideSeekView()
+    func autoFadeOutControlViewWithAnimation()
     
     // MARK: - Update View methods
     func updateCurrentTime(_ current: TimeInterval, total: TimeInterval)
