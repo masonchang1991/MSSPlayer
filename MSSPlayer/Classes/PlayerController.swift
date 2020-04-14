@@ -164,6 +164,7 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
     
     // MARK: - Parameters
     
+    open var isPlayingBeforeSeeking: Bool = false
     open var isAutoPlay: Bool = false
     open var currentResourceIndex: Int = 0
     open var currentResource: PlayerResource?
@@ -840,7 +841,9 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
             gestureChangeValue = 0.0
             switch gestureView.panDirection {
             case .vertical: break
-            case .horizontal: stopTimer()
+            case .horizontal:
+                isPlayingBeforeSeeking = isPlaying
+                stopTimer()
             }
         case .changed:
             switch gestureView.panDirection {
@@ -899,7 +902,11 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
                     seek(to: shouldSeekTo) { [weak self](isFinished) in
                         guard let self = self else { return }
                         if isFinished {
-                            self.play()
+                            if self.isPlayingBeforeSeeking {
+                                self.play()
+                            } else {
+                                self.pause()
+                            }
                         }
                     }
                 case .pause:
@@ -945,6 +952,7 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
         switch event {
         case .touchDown:
             isSliderSliding = true
+            isPlayingBeforeSeeking = isPlaying
             stopTimer()
         case .valueChanged:
             guard let playerItem = player.currentItem else { return }
@@ -973,7 +981,12 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
                 seek(to: shouldSeekTo) { [weak self](isFinished) in
                     guard let self = self else { return }
                     if isFinished {
-                        self.play()
+                        if self.isPlayingBeforeSeeking {
+                            self.play()
+                        } else {
+                            self.pause()
+                        }
+                        
                         if self.isSliderSliding {
                             self.stopTimer()
                         } else {
