@@ -92,6 +92,7 @@ public protocol PlayerController: NSObject, PlayerGestureViewDelegate {
     func changeResourceBy(key: String) -> Bool
     @discardableResult
     func changeResourceBy(index: Int) -> Bool
+    func clearResource()
     
     // MARK: - Open methods - Player method
     func play(with rate: Float?)
@@ -283,6 +284,20 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
         guard let resource = resources[exist: index] else { return false }
         configPlayerBy(resource, at: index)
         return true
+    }
+    
+    open func clearResource() {
+        // Update state
+        changeState(to: .empty)
+        // Reset Player Layer
+        playerLayerView.playerLayer.player = nil
+        // remove current observers
+        if let currentResourceItem = currentResource?.playerItem {
+            removeObserversFrom(currentResourceItem)
+        }
+        player.replaceCurrentItem(with: nil)
+        currentResource = nil
+        currentResourceIndex = 0
     }
     
     // MARK: - Open method - Player methods
