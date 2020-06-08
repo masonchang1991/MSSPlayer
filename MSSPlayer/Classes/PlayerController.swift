@@ -96,9 +96,10 @@ public protocol PlayerController: NSObject, PlayerGestureViewDelegate {
     
     // MARK: - Open methods - Player method
     func play(with rate: Float?)
+    func play(with rate: Float?, startAtPercentDuration percent: Double)
     func autoPlay(with rate: Float?)
     func pause()
-    func seek(to seconds: TimeInterval, completion: ((Bool) -> Void)?)
+    func seek(to seconds: TimeInterval, force: Bool, completion: ((Bool) -> Void)?)
     func changeRate(_ rate: Float)
     
     // MARK: - Open methods - Player View Setting
@@ -165,6 +166,7 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
     
     // MARK: - Parameters
     
+    open var durationIsValid: Bool = false
     open var isPlayingBeforeSeeking: Bool = false
     open var isAutoPlay: Bool = false
     open var currentResourceIndex: Int = 0
@@ -181,6 +183,8 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
     }
     
     // Private Parameters
+    /// when asset loaded, video duration become valid will do this block
+    private var waitForDurationValidBlock: (() -> ())?
     /// a computed property for player state
     private var currentPlayState: Bool {
         return player.rate != 0 && player.error == nil
@@ -257,6 +261,10 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
         // change player item and add observer
         let videoOutput = AVPlayerItemVideoOutput(pixelBufferAttributes: [kCVPixelBufferPixelFormatTypeKey as String: NSNumber(value: kCVPixelFormatType_32BGRA)])
         resource.playerItem.add(videoOutput)
+        // reset duration's isValid state
+        durationIsValid = false
+        waitForDurationValidBlock = nil
+        shouldSeekTo = 0
         player.replaceCurrentItem(with: resource.playerItem)
         // Reset Player Layer
         playerLayerView.playerLayer.player = player
@@ -291,6 +299,10 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
         changeState(to: .empty)
         // Reset Player Layer
         playerLayerView.playerLayer.player = nil
+        // reset duration's isValid state
+        durationIsValid = false
+        waitForDurationValidBlock = nil
+        shouldSeekTo = 0
         // remove current observers
         if let currentResourceItem = currentResource?.playerItem {
             removeObserversFrom(currentResourceItem)
@@ -314,6 +326,38 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
         }
     }
     
+    open func play(with rate: Float?, startAtPercentDuration percent: Double) {
+        play(with: rate)
+        if durationIsValid {
+            guard let duration = player.currentItem?.duration else { return }
+            let targetTime = floor(duration.seconds * percent)
+            state = .buffering
+            seek(to: targetTime) { [weak self](isComplete) in
+                guard let self = self else { return }
+                if isComplete {
+                    self.state = .readyToPlay
+                } else {
+                    self.log(type: .debug, msg: "seek fail")
+                }
+            }
+        } else {
+            // create block and when duration valid will execute this block
+            waitForDurationValidBlock = { [weak self] in
+                guard let self = self  else { return }
+                guard let duration = self.player.currentItem?.duration else { return }
+                let targetTime = floor(duration.seconds * percent)
+                self.state = .buffering
+                self.seek(to: targetTime, force: true) { (isComplete) in
+                    if isComplete {
+                        self.state = .readyToPlay
+                    } else {
+                        self.log(type: .debug, msg: "seek fail")
+                    }
+                }
+            }
+        }
+    }
+    
     open func autoPlay(with rate: Float? = nil) {
         if isAutoPlay { play(with: rate) }
     }
@@ -324,9 +368,9 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
         listenerMap.allObjects.forEach({ $0.playStateDidChangeTo(playing: false )})
     }
     
-    open func seek(to seconds: TimeInterval, completion: ((Bool) -> Void)?) {
+    open func seek(to seconds: TimeInterval, force: Bool = false, completion: ((Bool) -> Void)?) {
         if seconds.isNaN { completion?(false); return }
-        if player.currentItem?.status == .readyToPlay {
+        if player.currentItem?.status == .readyToPlay || force {
             let targetTime = CMTimeMake(value: Int64(seconds), timescale: 1)
             player.seek(to: targetTime, toleranceBefore: .zero, toleranceAfter: .zero) { (isFinished) in
                 completion?(isFinished)
@@ -592,6 +636,11 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
                 if playerItem.isPlaybackBufferEmpty && state == .readyToPlay {
                     changeState(to: .bufferFinished)
                 }
+            case "duration":
+                if !playerItem.duration.isIndefinite && !durationIsValid {
+                    waitForDurationValidBlock?()
+                    durationIsValid = true
+                }
             default: break
             }
         }
@@ -811,6 +860,8 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
         item.addObserver(self, forKeyPath: "playbackBufferEmpty", options: [.new, .initial], context: nil)
         // 緩衝區有足夠的數據能播放
         item.addObserver(self, forKeyPath: "playbackLikelyToKeepUp", options: [.new, .initial], context: nil)
+        
+        item.addObserver(self, forKeyPath: "duration", options: [.new, .initial], context: nil)
     }
     
     private func removeObserversFrom(_ item: AVPlayerItem) {
@@ -826,6 +877,7 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
         item.removeObserver(self, forKeyPath: "loadedTimeRanges")
         item.removeObserver(self, forKeyPath: "playbackBufferEmpty")
         item.removeObserver(self, forKeyPath: "playbackLikelyToKeepUp")
+        item.removeObserver(self, forKeyPath: "duration")
     }
     
     // MARK: - initialization and deallocation

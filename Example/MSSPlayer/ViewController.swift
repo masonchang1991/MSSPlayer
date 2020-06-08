@@ -23,6 +23,7 @@ class ViewController: UIViewController {
         let resourse2 = MSSPlayerResource(URL(string: "http://184.72.239.149/vod/smil:BigBuckBunny.smil/playlist.m3u8")!)
         playerController.setResources([resourse1, resourse2])
         playerController.containerView.setBgCoverWith(image: UIImage(named: "bg_image"), type: .none)
+        playerController.play(with: 1.0, startAtPercentDuration: 0.5)
     }
 }
 
