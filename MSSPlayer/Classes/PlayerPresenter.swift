@@ -66,7 +66,7 @@ open class MSSPlayerPresenter: PlayerPresenter, Loggable {
     open var isPortraitFullScreen: Bool = false
     
     // Delegates
-    open var delegate: PlayerPresenterDelegate?
+    open weak var delegate: PlayerPresenterDelegate?
     
     // Private Parameters
     /// get current device interfaceOrientation

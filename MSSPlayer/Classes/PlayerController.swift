@@ -199,14 +199,7 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
     
     /// Player Parameters
     fileprivate var shouldSeekTo: TimeInterval = 0
-    fileprivate lazy var timer: Timer = {
-        let timer = Timer.scheduledTimer(timeInterval: 0.5,
-                                         target: self,
-                                         selector: #selector(updateStateAndVideoTime),
-                                         userInfo: nil,
-                                         repeats: true)
-        return timer
-    }()
+    fileprivate weak var timer: Timer?
     fileprivate var isSliderSliding: Bool = false
     
     // MARK: - Open method - Asset Settings
@@ -737,7 +730,7 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
                 // show replay view
                 replayView.show()
             }
-            timer.invalidate()
+            timer?.invalidate()
             state = to
         case (_, .error(let error)):
             getCurrentControlView().showErrorViewWith(error!.localizedDescription)
@@ -750,21 +743,20 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
     // MARK: - Timer
     
     fileprivate func activeTimer() {
-        if !timer.isValid {
-            timer = Timer.scheduledTimer(timeInterval: 0.5,
-                                         target: self,
-                                         selector: #selector(updateStateAndVideoTime),
-                                         userInfo: nil,
-                                         repeats: true)
+        if !(timer?.isValid ?? false) {
+            timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true, block: { [weak self](_) in
+                guard let self = self else { return }
+                self.updateStateAndVideoTime()
+            })
         }
-        timer.fireDate = Date()
+        timer?.fireDate = Date()
     }
     
     fileprivate func stopTimer() {
-        timer.invalidate()
+        timer?.invalidate()
     }
     
-    @objc fileprivate func updateStateAndVideoTime() {
+    fileprivate func updateStateAndVideoTime() {
         guard let playerItem = player.currentItem else { return }
         if playerItem.duration.timescale > 0 {
             let currentTime = CMTimeGetSeconds(player.currentTime())
