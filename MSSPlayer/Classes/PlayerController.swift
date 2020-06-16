@@ -585,6 +585,17 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
         }
     }
     
+    // Timer handler
+    open func updateStateAndVideoTime() {
+        guard let playerItem = player.currentItem else { return }
+        if playerItem.duration.timescale > 0 {
+            let currentTime = CMTimeGetSeconds(player.currentTime())
+            let totalTime = TimeInterval(playerItem.duration.value) / TimeInterval(playerItem.duration.timescale)
+            // Notify time change
+            getCurrentControlView().updateCurrentTime(currentTime, total: totalTime)
+        }
+    }
+    
     // MARK: - KVO and notification
     
     override open func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
@@ -754,16 +765,6 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
     
     fileprivate func stopTimer() {
         timer?.invalidate()
-    }
-    
-    fileprivate func updateStateAndVideoTime() {
-        guard let playerItem = player.currentItem else { return }
-        if playerItem.duration.timescale > 0 {
-            let currentTime = CMTimeGetSeconds(player.currentTime())
-            let totalTime = TimeInterval(playerItem.duration.value) / TimeInterval(playerItem.duration.timescale)
-            // Notify time change
-            getCurrentControlView().updateCurrentTime(currentTime, total: totalTime)
-        }
     }
     
     private func availableDuration() -> TimeInterval? {
