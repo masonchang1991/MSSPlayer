@@ -882,6 +882,13 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
         super.init()
         setAllFunctionalViewsToContainerViews()
     }
+    
+    deinit {
+        if let currentResourceItem = currentResource?.playerItem {
+            removeObserversFrom(currentResourceItem)
+        }
+    }
+    
     // MARK: - PlayerGestureViewDelegat
     open func gestureView(_ gestureView: PlayerGestureView, singleTapWith numberOfTouch: Int) {
         let controlView = getCurrentControlView()
