@@ -56,7 +56,8 @@ open class MSSPlayerBackgroundView: UIView, PlayerBackgroundView, Loggable {
                 guard let urlRequest = urlRequest else { return }
                 let urlSession = URLSession(configuration: URLSessionConfiguration.default)
                 urlSession.dataTask(with: urlRequest, completionHandler: { (data, response, error) in
-                    DispatchQueue.main.async {
+                    DispatchQueue.main.async { [weak self] in
+                        guard let self = self else { return }
                         if let dataUnwrapped = data {
                             self.setBgCoverWith(image: UIImage(data: dataUnwrapped), type: .blur)
                         } else {
@@ -71,7 +72,8 @@ open class MSSPlayerBackgroundView: UIView, PlayerBackgroundView, Loggable {
                 guard let urlRequest = urlRequest else { return }
                 let urlSession = URLSession(configuration: URLSessionConfiguration.default)
                 urlSession.dataTask(with: urlRequest, completionHandler: { (data, response, error) in
-                    DispatchQueue.main.async {
+                    DispatchQueue.main.async { [weak self] in
+                        guard let self = self else { return }
                         if let dataUnwrapped = data {
                             self.setBgCoverWith(image: UIImage(data: dataUnwrapped), type: type)
                         } else {

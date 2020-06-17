@@ -118,7 +118,8 @@ extension UIImageView {
         
         let task = URLSession(configuration: .default).dataTask(with: url) { [weak self] (data, response, error) in
             guard let self = self, let data = data, error == nil else { return }
-            DispatchQueue.main.async() {  // execute on main thread
+            DispatchQueue.main.async() { [weak self] in // execute on main thread
+                guard let self = self else { return }
                 self.image = UIImage(data: data)
             }
         }

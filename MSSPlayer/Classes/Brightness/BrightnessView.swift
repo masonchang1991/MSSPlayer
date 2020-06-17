@@ -52,12 +52,14 @@ open class MSSPlayerBrightnessView: UIView, BrightnessView {
         presentItem = DispatchWorkItem(block: { [weak self] in
             guard let self = self else { return }
             if animated {
-                UIView.animate(withDuration: 0.2, animations: {
+                UIView.animate(withDuration: 0.2, animations: { [weak self] in
+                    guard let self = self else { return }
                     if !self.isShowing {
                         self.keyWindow?.addSubview(self)
                     }
                     self.alpha = 1.0
-                }) { (isFinish) in
+                }) { [weak self](isFinish) in
+                    guard let self = self else { return }
                     if isFinish {
                         self.isShowing = true
                     }
@@ -80,9 +82,11 @@ open class MSSPlayerBrightnessView: UIView, BrightnessView {
         presentItem = DispatchWorkItem(block: { [weak self] in
             guard let self = self else { return }
             if animated {
-                UIView.animate(withDuration: 0.2, animations: {
+                UIView.animate(withDuration: 0.2, animations: { [weak self] in
+                    guard let self = self else { return }
                     self.alpha = 0.0
-                }) { (isFinish) in
+                }) { [weak self](isFinish) in
+                    guard let self = self else { return }
                     if isFinish {
                         self.removeFromSuperview()
                         self.isShowing = false

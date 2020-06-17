@@ -340,7 +340,8 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
                 guard let duration = self.player.currentItem?.duration else { return }
                 let targetTime = floor(duration.seconds * percent)
                 self.state = .buffering
-                self.seek(to: targetTime, force: true) { (isComplete) in
+                self.seek(to: targetTime, force: true) { [weak self](isComplete) in
+                    guard let self = self else { return }
                     if isComplete {
                         self.state = .readyToPlay
                     } else {
