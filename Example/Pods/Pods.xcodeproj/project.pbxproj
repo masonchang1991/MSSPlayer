@@ -122,6 +122,7 @@
 		93377309242B6DE10017067A /* mss_volume_off@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = 93377303242B6DE10017067A /* mss_volume_off@3x.png */; };
 		9337730A242B6DE10017067A /* mss_volume_off@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = 93377303242B6DE10017067A /* mss_volume_off@3x.png */; };
 		9337730B242B6DE10017067A /* mss_volume_off@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = 93377303242B6DE10017067A /* mss_volume_off@3x.png */; };
+		937BCF65249B4DD900579897 /* PlayerSetting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 937BCF64249B4DD900579897 /* PlayerSetting.swift */; };
 		93826E1ABC1129965B6A9FD6D5AAD921 /* PlayerStartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 360C60C3DD9476E7FE3615ECB857EAE2 /* PlayerStartView.swift */; };
 		950AF9921F1DEA04C3D21D76D31601D0 /* PrettySyntax.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D3B651187CE45B77CE502B336643D71 /* PrettySyntax.swift */; };
 		96C4F7349BB0B624490075CB4F37F2B4 /* CwlCatchBadInstruction.swift in Sources */ = {isa = PBXBuildFile; fileRef = B92DA5634DE2648F108858D1514F11E5 /* CwlCatchBadInstruction.swift */; settings = {COMPILER_FLAGS = "-DPRODUCT_NAME=Nimble/Nimble"; }; };
@@ -427,6 +428,7 @@
 		933772F9242B6DA90017067A /* mss_volume_on@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = "mss_volume_on@2x.png"; path = "MSSPlayer/Assets/mss_volume_on@2x.png"; sourceTree = "<group>"; };
 		93377302242B6DE10017067A /* mss_volume_off@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = "mss_volume_off@2x.png"; path = "MSSPlayer/Assets/mss_volume_off@2x.png"; sourceTree = "<group>"; };
 		93377303242B6DE10017067A /* mss_volume_off@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = "mss_volume_off@3x.png"; path = "MSSPlayer/Assets/mss_volume_off@3x.png"; sourceTree = "<group>"; };
+		937BCF64249B4DD900579897 /* PlayerSetting.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = PlayerSetting.swift; path = MSSPlayer/Classes/PlayerSetting.swift; sourceTree = "<group>"; };
 		948D7E91D45E71CD2E3B9D4BEF64827F /* Contain.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = Contain.swift; path = Sources/Nimble/Matchers/Contain.swift; sourceTree = "<group>"; };
 		96B4F493A2CEE403BDA6B2B17CF5E5B6 /* BrightnessView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BrightnessView.swift; sourceTree = "<group>"; };
 		96C9293D14A58DDD97AA4880039FCC9A /* NimbleXCTestHandler.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = NimbleXCTestHandler.swift; path = Sources/Nimble/Adapters/NimbleXCTestHandler.swift; sourceTree = "<group>"; };
@@ -703,6 +705,7 @@
 				CFC98074D0D837F815E134259AD4F3C3 /* Extensions.swift */,
 				AD9CF0FEA1E43581C55B94006D8E8AE9 /* Loggable.swift */,
 				3DA24545A91801D6E1A9A6131121B58F /* MSSPlayerUtility.swift */,
+				937BCF64249B4DD900579897 /* PlayerSetting.swift */,
 				507FCB68D5B986F5A23B51E41BDDB4E5 /* PlayerController.swift */,
 				22A8B26DC2A1A807D9559C63BF439914 /* PlayerPresenter.swift */,
 				AF1EE10134057C3431B279425EEACD1A /* PlayerState.swift */,
@@ -1623,6 +1626,7 @@
 				F8D920546E374289D18822CD1B81F15C /* PlayerLayerView.swift in Sources */,
 				BF04ACB2FAE0E92BD25C0079C8FE9549 /* PlayerLoadingView.swift in Sources */,
 				D8D3ADBF1B416AFCD74DF7713B22D853 /* PlayerPauseView.swift in Sources */,
+				937BCF65249B4DD900579897 /* PlayerSetting.swift in Sources */,
 				608CB832D9E099998D0232608BD329CB /* PlayerPlayNextView.swift in Sources */,
 				37FCCD1FA9F50FB2141594DCD52C3446 /* PlayerPresenter.swift in Sources */,
 				D878FCB72B572B94802E7C7A66BED389 /* PlayerReplayView.swift in Sources */,

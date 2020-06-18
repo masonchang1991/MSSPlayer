@@ -76,6 +76,7 @@ public protocol PlayerController: NSObject, PlayerGestureViewDelegate {
     var currentResource: PlayerResource? { get set }
     var resources: [PlayerResource] { get set }
     var player: AVPlayer { get set }
+    var playerSetting: PlayerSetting { get set }
     var isPlaying: Bool { get set }
     var delegate: PlayerControllerDelegate? { get set }
     
@@ -101,6 +102,7 @@ public protocol PlayerController: NSObject, PlayerGestureViewDelegate {
     func pause()
     func seek(to seconds: TimeInterval, force: Bool, completion: ((Bool) -> Void)?)
     func changeRate(_ rate: Float)
+    func updatePlayerSetting(_ setting: PlayerSetting)
     
     // MARK: - Open methods - Player View Setting
     func changeControlView(_ controlView: PlayerControlView, isPortrait: Bool)
@@ -136,6 +138,10 @@ public extension PlayerController {
     func setVideoBy(_ item: AVPlayerItem) {
         let resource = MSSPlayerResource(item)
         self.setResources([resource])
+    }
+    
+    func updatePlayerSetting(_ setting: PlayerSetting) {
+        self.playerSetting = setting
     }
 }
 
@@ -173,6 +179,7 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
     open var currentResource: PlayerResource?
     open var resources: [PlayerResource] = []
     open var player: AVPlayer
+    open var playerSetting: PlayerSetting = MSSPlayerSetting()
     open weak var delegate: PlayerControllerDelegate?
     open var isPlaying: Bool = false {
         didSet {
@@ -919,7 +926,7 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
                 if gestureView.panStartLocation.x < gestureView.bounds.size.width / 2 {
                     // MARK: - change volume
                     let volumeController = PlayerSystemService.getVolumeController()
-                    let adjustValue: CGFloat = 0.02
+                    let adjustValue: CGFloat = CGFloat(0.02 * playerSetting.voiceAdjustSpeed)
                     if velocityPoint.y > 0 {
                         volumeController.addVolume(Float(-adjustValue))
                     } else if velocityPoint.y < 0 {
@@ -931,7 +938,7 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
                     // MARK: - change brightness
                     let brightnessController = PlayerSystemService.getBrightnessController()
                     brightnessController.changeOrientation(UIDevice.current.orientation)
-                    let adjustValue: CGFloat = 0.01
+                    let adjustValue: CGFloat = CGFloat(0.01 * playerSetting.brightnessAdjustSpeed)
                     if velocityPoint.y > 0 {
                         brightnessController.addBrightness(-adjustValue)
                     } else if velocityPoint.y < 0 {
