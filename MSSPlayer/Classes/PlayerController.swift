@@ -957,7 +957,7 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
                 var seekRate = totalTime / 400
                 // Modify seekRate
                 if seekRate < 0.5 { seekRate = 0.5 }
-                shouldSeekTo = currentTime + TimeInterval(gestureChangeValue) / 100 * seekRate * playerSetting.fastForwardSpeed
+                shouldSeekTo = currentTime + TimeInterval(gestureChangeValue) / 100 * seekRate * Double(playerSetting.fastForwardSpeed)
                 // Modify shouldSeekTo value
                 if shouldSeekTo >= totalTime {
                     shouldSeekTo = floor(totalTime)
