@@ -923,7 +923,7 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
         case .changed:
             switch gestureView.panDirection {
             case .vertical:
-                if gestureView.panStartLocation.x < gestureView.bounds.size.width / 2 {
+                if gestureView.panStartLocation.x > gestureView.bounds.size.width / 2 {
                     // MARK: - change volume
                     let volumeController = PlayerSystemService.getVolumeController()
                     let adjustValue: CGFloat = CGFloat(0.02 * playerSetting.voiceAdjustSpeed)
