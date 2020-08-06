@@ -148,6 +148,8 @@ open class MSSPlayerPresenter: PlayerPresenter, Loggable {
             } else {
                 playerView.removeFromSuperview()
                 fullScreenContainerView.addSubview(playerView)
+                let orientation: UIInterfaceOrientation = mode == .landScapeRightFullScreen ? .landscapeRight : .landscapeLeft
+                playerView.transform = self.getRotationTransformBy(orientation)
                 playerView.frame = fullScreenContainerView.bounds
                 playerView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
                 playerView.layoutIfNeeded()
@@ -221,6 +223,7 @@ open class MSSPlayerPresenter: PlayerPresenter, Loggable {
             } else {
                 playerView.removeFromSuperview()
                 portraitContainerView.addSubview(playerView)
+                playerView.transform = self.getRotationTransformBy(.portrait)
                 playerView.frame = portraitContainerView.bounds
                 playerView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
                 playerView.layoutIfNeeded()
