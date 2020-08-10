@@ -21,22 +21,34 @@ public protocol BrightnessController {
     func addBrightness(_ level: CGFloat)
     func updateBrightness(_ level: CGFloat)
     func changeOrientation(_ orientation: UIDeviceOrientation)
+    func setOnView(_ view: UIView)
+    func changeToFullScreenMode(_ isFullScreen: Bool)
 }
 
 open class MSSPlayerBrightnessController: BrightnessController {
     
     open var isEnable: Bool = true
     open var brightnessView: BrightnessView = MSSPlayerBrightnessView()
+    open lazy var landscapeBrightnessView: BrightnessView = {
+        let frame = CGRect(origin: .zero, size: CGSize(width: 300, height: 50))
+        return NormalBrightness(frame: frame)
+    }()
     open var timer: Timer?
+    open var isFullScreen: Bool = false
     
     // MARK: - UI Display methods
     
     open func show() {
         resetTimer()
-        brightnessView.show(animated: true)
+        if isFullScreen {
+            landscapeBrightnessView.show(animated: true)
+        } else {
+            brightnessView.show(animated: true)
+        }
     }
     
     open func dissappear() {
+        landscapeBrightnessView.disappear(animated: true)
         brightnessView.disappear(animated: true)
         removeTimer()
     }
@@ -44,13 +56,35 @@ open class MSSPlayerBrightnessController: BrightnessController {
     // MARK: - Open methods
     
     open func addBrightness(_ level: CGFloat) {
-        updateBrightness(brightnessView.getCurrentBrightnessLevel() + level)
+        if isFullScreen {
+            updateBrightness(landscapeBrightnessView.getCurrentBrightnessLevel() + level)
+        } else {
+            updateBrightness(brightnessView.getCurrentBrightnessLevel() + level)
+        }
     }
     
     open func updateBrightness(_ level: CGFloat) {
         if isEnable {
             show()
-            brightnessView.updateBrightnessLevelWith(level)
+            if isFullScreen {
+                landscapeBrightnessView.updateBrightnessLevelWith(level)
+            } else {
+                brightnessView.updateBrightnessLevelWith(level)
+            }
+        }
+    }
+    
+    open func setOnView(_ view: UIView) {
+        if isFullScreen {
+            landscapeBrightnessView.removeBrightnessViewFromSuperView()
+            landscapeBrightnessView.setOnView(view)
+        }
+    }
+    
+    open func changeToFullScreenMode(_ isFullScreen: Bool) {
+        self.isFullScreen = isFullScreen
+        if !isFullScreen {
+            landscapeBrightnessView.removeBrightnessViewFromSuperView()
         }
     }
      

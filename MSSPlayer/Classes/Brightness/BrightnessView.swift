@@ -16,6 +16,8 @@ public protocol BrightnessView: UIView {
     // Open methods
     func getCurrentBrightnessLevel() -> CGFloat
     func updateBrightnessLevelWith(_ brightnessLevel: CGFloat)
+    func setOnView(_ view: UIView)
+    func removeBrightnessViewFromSuperView()
 }
 
 open class MSSPlayerBrightnessView: UIView, BrightnessView {
@@ -123,6 +125,14 @@ open class MSSPlayerBrightnessView: UIView, BrightnessView {
             }
         }
         UIScreen.main.brightness = brightnessLevel
+    }
+    
+    open func setOnView(_ view: UIView) {
+        
+    }
+    
+    open func removeBrightnessViewFromSuperView() {
+        self.removeFromSuperview()
     }
     
     // MARK: - Private methods
@@ -253,3 +263,155 @@ open class MSSPlayerBrightnessView: UIView, BrightnessView {
         setupUI()
     }
 }
+
+open class NormalBrightness: UIView, BrightnessView {
+    
+    // MARK: - UIComponents
+    private var brightnessSlider: UISlider = UISlider()
+    let brightnessImageView: UIImageView = UIImageView()
+    var containerView: UIView?
+    
+    // MARK: - Parameters
+    private let edgeInset: UIEdgeInsets = UIEdgeInsets(top: 20, left: 50, bottom: 20, right: 20)
+    private(set) var isShowing: Bool = false
+    private var presentItem: DispatchWorkItem?
+    
+    open func setOnView(_ view: UIView) {
+        self.frame = CGRect(x: edgeInset.left,
+                            y: edgeInset.top, width: view.frame.width - edgeInset.left - edgeInset.right,
+                            height: 30)
+        self.containerView = view
+        self.containerView?.addSubview(self)
+        self.alpha = 0.001
+    }
+    
+    open func show(animated: Bool) {
+        cancelCurrentPresentAction()
+        presentItem = DispatchWorkItem(block: { [weak self] in
+            guard let self = self else { return }
+            if animated {
+                UIView.animate(withDuration: 0.2, animations: { [weak self] in
+                    guard let self = self else { return }
+                    self.alpha = 1.0
+                }) { [weak self](isFinish) in
+                    guard let self = self else { return }
+                    if isFinish {
+                        self.isShowing = true
+                    }
+                }
+            } else {
+                self.alpha = 1.0
+                self.isShowing = true
+            }
+        })
+        if let item = presentItem {
+            DispatchQueue.main.async(execute: item)
+        }
+    }
+    
+    open func disappear(animated: Bool) {
+        cancelCurrentPresentAction()
+        presentItem = DispatchWorkItem(block: { [weak self] in
+            guard let self = self else { return }
+            if animated {
+                UIView.animate(withDuration: 0.2, animations: { [weak self] in
+                    guard let self = self else { return }
+                    self.alpha = 0.001
+                }) { [weak self](isFinish) in
+                    guard let self = self else { return }
+                    if isFinish {
+                        self.isShowing = false
+                    }
+                }
+            } else {
+                self.alpha = 0.01
+                self.isShowing = false
+            }
+        })
+        if let item = presentItem {
+            DispatchQueue.main.async(execute: item)
+        }
+    }
+    
+    open func getCurrentBrightnessLevel() -> CGFloat {
+        return UIScreen.main.brightness
+    }
+    
+    open func updateBrightnessLevelWith(_ brightnessLevel: CGFloat) {
+        var level = brightnessLevel
+        if brightnessLevel > 1 {
+            level = 1
+        } else if brightnessLevel < 0 {
+            level = 0
+        }
+        UIScreen.main.brightness = brightnessLevel
+        brightnessSlider.value = Float(level)
+        print("l", brightnessLevel)
+        
+        if level > 0 {
+            brightnessImageView.image = MSSImageResource.get(.mss_brightness_on)?.withRenderingMode(.alwaysTemplate)
+            brightnessImageView.tintColor = UIColor.white
+        } else {
+            brightnessImageView.image = MSSImageResource.get(.mss_brightness_on)?.withRenderingMode(.alwaysTemplate)
+            brightnessImageView.tintColor = UIColor.white
+        }
+    }
+    
+    open func removeBrightnessViewFromSuperView() {
+        self.removeFromSuperview()
+    }
+    
+    // MARK: - Private methods
+    
+    private func cancelCurrentPresentAction() {
+        guard let presentItem = presentItem else { return }
+        presentItem.cancel()
+    }
+    
+    // MARK: - View setting methods
+    
+    open override func layoutSubviews() {
+        super.layoutSubviews()
+        brightnessImageView.frame = CGRect(origin: CGPoint(x: 0, y: 2),
+                                      size: CGSize(width: self.frame.height / 2,
+                                                   height: self.frame.height / 2))
+        brightnessSlider.frame = CGRect(x: brightnessImageView.frame.width + 5,
+                                  y: 0,
+                                  width: self.frame.width - (brightnessImageView.frame.width + 5),
+                                  height: self.frame.height * 2 / 3)
+        brightnessSlider.layer.cornerRadius = brightnessSlider.frame.height / 2
+    }
+    
+    func setupUI(){
+        backgroundColor = .clear
+        addSubview(brightnessSlider)
+        brightnessSlider.frame = bounds
+        brightnessSlider.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        brightnessSlider.isUserInteractionEnabled = false
+        brightnessSlider.alpha = 1.0
+        brightnessSlider.tintColor = UIColor.white.withAlphaComponent(0.4)
+        brightnessSlider.setThumbImage(UIImage(), for: .normal)
+        
+        addSubview(brightnessImageView)
+        brightnessImageView.image = MSSImageResource.get(.mss_brightness_on)?.withRenderingMode(.alwaysTemplate)
+        brightnessImageView.contentMode = .scaleAspectFill
+        brightnessImageView.clipsToBounds = true
+        brightnessImageView.backgroundColor = .clear
+        brightnessImageView.tintColor = UIColor.white
+    }
+    
+    convenience public init() {
+        self.init(frame: CGRect(origin: .zero, size: CGSize(width: 100, height: 30)))
+    }
+    
+    override public init(frame: CGRect) {
+        super.init(frame: frame)
+        setupUI()
+    }
+    
+    required public init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+}
+
+

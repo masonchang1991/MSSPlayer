@@ -21,6 +21,7 @@ public enum MSSAsset: String {
     case mss_brightness
     case mss_volume_on
     case mss_volume_off
+    case mss_brightness_on
 }
 
 open class MSSImageResource {

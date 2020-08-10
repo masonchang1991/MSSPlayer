@@ -925,6 +925,9 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
             case .vertical:
                 if gestureView.panStartLocation.x > gestureView.bounds.size.width / 2 {
                     // MARK: - change volume
+                    // hide brightnessController first
+                    let brightnessController = PlayerSystemService.getBrightnessController()
+                    brightnessController.dissappear()
                     let volumeController = PlayerSystemService.getVolumeController()
                     let adjustValue: CGFloat = CGFloat(0.02 * playerSetting.voiceAdjustSpeed)
                     if velocityPoint.y > 0 {
@@ -936,8 +939,10 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
                     }
                 } else {
                     // MARK: - change brightness
+                    // hide volumeController first
+                    let volumeController = PlayerSystemService.getVolumeController()
+                    volumeController.dissappear()
                     let brightnessController = PlayerSystemService.getBrightnessController()
-                    brightnessController.changeOrientation(UIDevice.current.orientation)
                     let adjustValue: CGFloat = CGFloat(0.01 * playerSetting.brightnessAdjustSpeed)
                     if velocityPoint.y > 0 {
                         brightnessController.addBrightness(-adjustValue)
@@ -1137,6 +1142,9 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
                         let volumeController = PlayerSystemService.getVolumeController()
                         volumeController.changeToFullScreenMode(true)
                         volumeController.setOnView(containerView)
+                        let brightnessController = PlayerSystemService.getBrightnessController()
+                        brightnessController.changeToFullScreenMode(true)
+                        brightnessController.setOnView(containerView)
                     }
                 case (.landScapeLeftFullScreen, .landscapeRight), (.portrait, .landscapeRight):
                     if (shouldAllowChangeFullScreenState ?? true) {
@@ -1144,6 +1152,9 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
                         let volumeController = PlayerSystemService.getVolumeController()
                         volumeController.changeToFullScreenMode(true)
                         volumeController.setOnView(containerView)
+                        let brightnessController = PlayerSystemService.getBrightnessController()
+                        brightnessController.changeToFullScreenMode(true)
+                        brightnessController.setOnView(containerView)
                     }
                 default: break
                 }
@@ -1162,6 +1173,8 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
                     changeToFullScreen(false)
                     let volumeController = PlayerSystemService.getVolumeController()
                     volumeController.changeToFullScreenMode(false)
+                    let brightnessController = PlayerSystemService.getBrightnessController()
+                    brightnessController.changeToFullScreenMode(false)
                 }
             }
         default: break
