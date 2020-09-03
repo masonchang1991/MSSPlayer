@@ -672,6 +672,24 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
     }
     
     // MARK: - Private methods
+    
+    private func settingAVAudio() {
+        // play with sound in slience mode
+        do {
+            if #available(iOS 10.0, *) {
+                try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
+            } else {
+                AVAudioSession.sharedInstance().perform(NSSelectorFromString("setCategory:withOptions:error:"),
+                                                        with: AVAudioSession.Category.playback,
+                                                        with: [AVAudioSession.CategoryOptions.duckOthers])
+            }
+            try AVAudioSession.sharedInstance().setActive(true)
+        } catch(let error) {
+            // TODO: Error handle
+            self.log(type: .error, msg: "settingAVAudio error", error)
+        }
+    }
+    
     // MARK: - State Machine
     private func changeState(to: PlayerState) {
         if state == to { return }
@@ -888,6 +906,7 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
         self.playerLayerView = MSSPlayerLayerView()
         self.playerLayerView.playerLayer.player = self.player
         super.init()
+        settingAVAudio()
         setAllFunctionalViewsToContainerViews()
     }
     
@@ -897,7 +916,7 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
         }
     }
     
-    // MARK: - PlayerGestureViewDelegat
+    // MARK: - PlayerGestureViewDelegate
     open func gestureView(_ gestureView: PlayerGestureView, singleTapWith numberOfTouch: Int) {
         let controlView = getCurrentControlView()
         controlView.isShowing ? controlView.hideControlView(animated: true): controlView.showControlView(animated: true)
