@@ -265,7 +265,7 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
         durationIsValid = false
         waitForDurationValidBlock = nil
         shouldSeekTo = 0
-        player.replaceCurrentItem(with: resource.playerItem)
+        player = AVPlayer(playerItem: resource.playerItem)
         // Reset Player Layer
         playerLayerView.playerLayer.player = player
         addObserversTo(resource.playerItem)
