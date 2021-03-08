@@ -917,12 +917,12 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
     }
     
     // MARK: - PlayerGestureViewDelegate
-    open func gestureView(_ gestureView: PlayerGestureView, singleTapWith numberOfTouch: Int) {
+    open func gestureView(_ gestureView: PlayerGestureView, singleTapWith gesture: UITapGestureRecognizer) {
         let controlView = getCurrentControlView()
         controlView.isShowing ? controlView.hideControlView(animated: true): controlView.showControlView(animated: true)
     }
     
-    open func gestureView(_ gestureView: PlayerGestureView, doubleTapWith numberOfTouch: Int) {
+    open func gestureView(_ gestureView: PlayerGestureView, doubleTapWith gesture: UITapGestureRecognizer) {
         switch state {
         case .playing: pause()
         default: play()
