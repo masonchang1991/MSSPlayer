@@ -30,14 +30,14 @@ public enum PanDirection {
 }
 
 public protocol PlayerGestureViewDelegate: class {
-    func gestureView(_ gestureView: PlayerGestureView, doubleTapWith numberOfTouch: Int)
-    func gestureView(_ gestureView: PlayerGestureView, singleTapWith numberOfTouch: Int)
+    func gestureView(_ gestureView: PlayerGestureView, doubleTapWith gesture: UITapGestureRecognizer)
+    func gestureView(_ gestureView: PlayerGestureView, singleTapWith gesture: UITapGestureRecognizer)
     func gestureView(_ gestureView: PlayerGestureView, state: UIGestureRecognizer.State, velocityPoint: CGPoint)
 }
 
 public extension PlayerGestureViewDelegate {
-    func gestureView(_ gestureView: PlayerGestureView, doubleTapWith numberOfTouch: Int) { }
-    func gestureView(_ gestureView: PlayerGestureView, singleTapWith numberOfTouch: Int) { }
+    func gestureView(_ gestureView: PlayerGestureView, doubleTapWith gesture: UITapGestureRecognizer) { }
+    func gestureView(_ gestureView: PlayerGestureView, singleTapWith gesture: UITapGestureRecognizer) { }
     func gestureView(_ gestureView: PlayerGestureView, state: UIGestureRecognizer.State, velocityPoint: CGPoint) { }
 }
 
@@ -129,8 +129,8 @@ open class MSSPlayerGestureView: UIView, PlayerGestureView {
     
     @objc private func tap(_ gesture: UITapGestureRecognizer) {
         switch gesture.numberOfTapsRequired {
-        case 1: delegate?.gestureView(self, singleTapWith: gesture.numberOfTouches)
-        case 2: delegate?.gestureView(self, doubleTapWith: gesture.numberOfTouches)
+        case 1: delegate?.gestureView(self, singleTapWith: gesture)
+        case 2: delegate?.gestureView(self, doubleTapWith: gesture)
         default: break
         }
     }
