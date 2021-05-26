@@ -209,6 +209,9 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
     fileprivate weak var timer: Timer?
     fileprivate var isSliderSliding: Bool = false
     
+    /// KVO Observer
+    var rateObserver: NSKeyValueObservation?
+    
     // MARK: - Open method - Asset Settings
     
     open func setResources(_ resources: [PlayerResource]) {
@@ -656,9 +659,6 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
             default: break
             }
         }
-        if keyPath == "rate" {
-            updateStatus()
-        }
     }
     
     @objc private func videoPlayDidEnd() {
@@ -870,7 +870,13 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
         
         // KVO Observers
         // Player Status
-        player.addObserver(self, forKeyPath: "rate", options: [.initial, .new, .old], context: nil)
+        rateObserver = player.observe(
+            \.rate,
+            options: [.initial, .new, .old],
+            changeHandler: { [weak self] (player, change) in
+                self?.updateStatus()
+            }
+        )
         // AVPlayerItemStatusUnknown, AVPlayerItemStatusReadyToPlay, AVPlayerItemStatusFailed
         item.addObserver(self, forKeyPath: "status", options: [.new, .initial], context: nil)
         // 當前影片的進度緩衝
@@ -891,7 +897,10 @@ open class MSSPlayerController: NSObject, PlayerController, Loggable, PlayerView
         notiCenter.removeObserver(self,
                                   name: .AVPlayerItemFailedToPlayToEndTime,
                                   object: item)
-        player.removeObserver(self, forKeyPath: "rate")
+        
+        rateObserver?.invalidate()
+        rateObserver = nil
+        
         item.removeObserver(self, forKeyPath: "status")
         item.removeObserver(self, forKeyPath: "loadedTimeRanges")
         item.removeObserver(self, forKeyPath: "playbackBufferEmpty")
